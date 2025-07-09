@@ -190,12 +190,12 @@
             margin-right: 10px;
         }
         
-        .difficulty-selector {
+        .difficulty-selector, .direction-selector {
             text-align: center;
             margin-bottom: 30px;
         }
         
-        .difficulty-btn {
+        .difficulty-btn, .direction-btn {
             background: #e9ecef;
             color: #495057;
             margin: 0 10px;
@@ -203,9 +203,14 @@
             border-radius: 20px;
         }
         
-        .difficulty-btn.active {
+        .difficulty-btn.active, .direction-btn.active {
             background: #4ecdc4;
             color: white;
+        }
+        
+        .direction-btn {
+            margin: 5px;
+            font-size: 1em;
         }
         
         .celebration {
@@ -237,9 +242,17 @@
         </div>
         
         <div class="difficulty-selector">
+            <h3 style="color: #666; margin-bottom: 15px;">Choose Difficulty:</h3>
             <button class="difficulty-btn active" onclick="setDifficulty('easy')">Easy</button>
             <button class="difficulty-btn" onclick="setDifficulty('medium')">Medium</button>
             <button class="difficulty-btn" onclick="setDifficulty('hard')">Hard</button>
+        </div>
+        
+        <div class="direction-selector">
+            <h3 style="color: #666; margin-bottom: 15px;">Choose Translation Direction:</h3>
+            <button class="direction-btn active" onclick="setDirection('mixed')">🔄 Mixed</button>
+            <button class="direction-btn" onclick="setDirection('fr-en')">🇫🇷 → 🇺🇸 French to English</button>
+            <button class="direction-btn" onclick="setDirection('en-fr')">🇺🇸 → 🇫🇷 English to French</button>
         </div>
         
         <div class="exercise-card">
@@ -265,6 +278,7 @@
         let totalCount = 0;
         let streakCount = 0;
         let currentDifficulty = 'easy';
+        let currentDirection = 'mixed';
         
         // Exercise data organized by difficulty
         const exercises = {
@@ -276,30 +290,70 @@
                 { french: "Good night", english: "Bonne nuit", type: "en-fr" },
                 { french: "Merci", english: "Thank you", type: "fr-en" },
                 { french: "Please", english: "S'il vous plaît", type: "en-fr" },
+                { french: "Salut", english: "Hi", type: "fr-en" },
+                { french: "Excuse me", english: "Pardon", type: "en-fr" },
                 
-                // Numbers
-                { french: "Cinq", english: "Five", type: "fr-en" },
-                { french: "Ten", english: "Dix", type: "en-fr" },
+                // Numbers (expanded)
+                { french: "Un", english: "One", type: "fr-en" },
+                { french: "Two", english: "Deux", type: "en-fr" },
                 { french: "Trois", english: "Three", type: "fr-en" },
-                { french: "Seven", english: "Sept", type: "en-fr" },
+                { french: "Four", english: "Quatre", type: "en-fr" },
+                { french: "Cinq", english: "Five", type: "fr-en" },
+                { french: "Six", english: "Six", type: "en-fr" },
+                { french: "Sept", english: "Seven", type: "fr-en" },
+                { french: "Eight", english: "Huit", type: "en-fr" },
+                { french: "Neuf", english: "Nine", type: "fr-en" },
+                { french: "Ten", english: "Dix", type: "en-fr" },
+                { french: "Vingt", english: "Twenty", type: "fr-en" },
+                { french: "Thirty", english: "Trente", type: "en-fr" },
                 
-                // Colors
+                // Colors (expanded)
                 { french: "Rouge", english: "Red", type: "fr-en" },
                 { french: "Blue", english: "Bleu", type: "en-fr" },
                 { french: "Jaune", english: "Yellow", type: "fr-en" },
                 { french: "Green", english: "Vert", type: "en-fr" },
+                { french: "Orange", english: "Orange", type: "fr-en" },
+                { french: "Purple", english: "Violet", type: "en-fr" },
+                { french: "Rose", english: "Pink", type: "fr-en" },
+                { french: "Black", english: "Noir", type: "en-fr" },
+                { french: "Blanc", english: "White", type: "fr-en" },
+                { french: "Brown", english: "Marron", type: "en-fr" },
                 
-                // Animals
+                // Animals (expanded)
                 { french: "Chat", english: "Cat", type: "fr-en" },
                 { french: "Dog", english: "Chien", type: "en-fr" },
                 { french: "Oiseau", english: "Bird", type: "fr-en" },
                 { french: "Fish", english: "Poisson", type: "en-fr" },
+                { french: "Lapin", english: "Rabbit", type: "fr-en" },
+                { french: "Mouse", english: "Souris", type: "en-fr" },
+                { french: "Cheval", english: "Horse", type: "fr-en" },
+                { french: "Cow", english: "Vache", type: "en-fr" },
+                { french: "Cochon", english: "Pig", type: "fr-en" },
+                { french: "Sheep", english: "Mouton", type: "en-fr" },
+                { french: "Canard", english: "Duck", type: "fr-en" },
+                { french: "Frog", english: "Grenouille", type: "en-fr" },
                 
                 // Body parts
                 { french: "Tête", english: "Head", type: "fr-en" },
                 { french: "Eyes", english: "Yeux", type: "en-fr" },
                 { french: "Mains", english: "Hands", type: "fr-en" },
-                { french: "Feet", english: "Pieds", type: "en-fr" }
+                { french: "Feet", english: "Pieds", type: "en-fr" },
+                { french: "Nez", english: "Nose", type: "fr-en" },
+                { french: "Mouth", english: "Bouche", type: "en-fr" },
+                
+                // Simple food
+                { french: "Eau", english: "Water", type: "fr-en" },
+                { french: "Milk", english: "Lait", type: "en-fr" },
+                { french: "Pain", english: "Bread", type: "fr-en" },
+                { french: "Apple", english: "Pomme", type: "en-fr" },
+                { french: "Banane", english: "Banana", type: "fr-en" },
+                { french: "Orange", english: "Orange", type: "en-fr" },
+                
+                // Basic emotions
+                { french: "Heureux", english: "Happy", type: "fr-en" },
+                { french: "Sad", english: "Triste", type: "en-fr" },
+                { french: "Fatigué", english: "Tired", type: "fr-en" },
+                { french: "Angry", english: "Fâché", type: "en-fr" }
             ],
             
             medium: [
@@ -308,24 +362,62 @@
                 { french: "I have a red apple", english: "J'ai une pomme rouge", type: "en-fr" },
                 { french: "La robe est bleue", english: "The dress is blue", type: "fr-en" },
                 { french: "My brother is tall", english: "Mon frère est grand", type: "en-fr" },
+                { french: "Le soleil est jaune", english: "The sun is yellow", type: "fr-en" },
+                { french: "I see a green tree", english: "Je vois un arbre vert", type: "en-fr" },
+                
+                // Transportation
+                { french: "La voiture est rouge", english: "The car is red", type: "fr-en" },
+                { french: "I ride my bike", english: "Je monte à vélo", type: "en-fr" },
+                { french: "L'avion vole haut", english: "The plane flies high", type: "fr-en" },
+                { french: "The train is fast", english: "Le train est rapide", type: "en-fr" },
+                { french: "Le bateau est grand", english: "The boat is big", type: "fr-en" },
+                { french: "I walk to school", english: "Je marche à l'école", type: "en-fr" },
                 
                 // Family and age
                 { french: "J'ai sept ans", english: "I am seven years old", type: "fr-en" },
                 { french: "My sister is young", english: "Ma sœur est jeune", type: "en-fr" },
                 { french: "Grand-mère est vieille", english: "Grandmother is old", type: "fr-en" },
                 { french: "The baby is small", english: "Le bébé est petit", type: "en-fr" },
+                { french: "Mon oncle est gentil", english: "My uncle is nice", type: "fr-en" },
+                { french: "My aunt is funny", english: "Ma tante est drôle", type: "en-fr" },
                 
-                // Food preferences
+                // Food preferences and meals
                 { french: "J'aime les fraises", english: "I like strawberries", type: "fr-en" },
                 { french: "I don't like fish", english: "Je n'aime pas le poisson", type: "en-fr" },
                 { french: "Je mange du pain", english: "I eat bread", type: "fr-en" },
                 { french: "I drink milk", english: "Je bois du lait", type: "en-fr" },
+                { french: "Le gâteau est délicieux", english: "The cake is delicious", type: "fr-en" },
+                { french: "I eat breakfast", english: "Je mange le petit déjeuner", type: "en-fr" },
+                { french: "Les légumes sont verts", english: "The vegetables are green", type: "fr-en" },
+                { french: "I like chocolate", english: "J'aime le chocolat", type: "en-fr" },
+                
+                // Toys and games
+                { french: "J'aime jouer", english: "I like to play", type: "fr-en" },
+                { french: "My toy is broken", english: "Mon jouet est cassé", type: "en-fr" },
+                { french: "Le ballon est rond", english: "The ball is round", type: "fr-en" },
+                { french: "I have a doll", english: "J'ai une poupée", type: "en-fr" },
+                { french: "Les jeux sont amusants", english: "Games are fun", type: "fr-en" },
+                { french: "I play with blocks", english: "Je joue avec des blocs", type: "en-fr" },
                 
                 // School and house
                 { french: "J'aime l'école", english: "I like school", type: "fr-en" },
                 { french: "The book is on the table", english: "Le livre est sur la table", type: "en-fr" },
                 { french: "Ma chambre est petite", english: "My bedroom is small", type: "fr-en" },
-                { french: "The kitchen is big", english: "La cuisine est grande", type: "en-fr" }
+                { french: "The kitchen is big", english: "La cuisine est grande", type: "en-fr" },
+                { french: "Le professeur est sympa", english: "The teacher is nice", type: "fr-en" },
+                { french: "I do my homework", english: "Je fais mes devoirs", type: "en-fr" },
+                
+                // Clothing
+                { french: "Ma chemise est propre", english: "My shirt is clean", type: "fr-en" },
+                { french: "I wear shoes", english: "Je porte des chaussures", type: "en-fr" },
+                { french: "Le manteau est chaud", english: "The coat is warm", type: "fr-en" },
+                { french: "My hat is red", english: "Mon chapeau est rouge", type: "en-fr" },
+                
+                // Nature and environment
+                { french: "L'arbre est grand", english: "The tree is tall", type: "fr-en" },
+                { french: "The flowers are pretty", english: "Les fleurs sont jolies", type: "en-fr" },
+                { french: "Le jardin est beau", english: "The garden is beautiful", type: "fr-en" },
+                { french: "I like the park", english: "J'aime le parc", type: "en-fr" }
             ],
             
             hard: [
@@ -333,25 +425,65 @@
                 { french: "Je ne comprends pas", english: "I don't understand", type: "fr-en" },
                 { french: "Can you repeat please?", english: "Pouvez-vous répéter s'il vous plaît?", type: "en-fr" },
                 { french: "J'ai faim et j'ai soif", english: "I'm hungry and I'm thirsty", type: "fr-en" },
-                { french: "It's raining today", english: "Il pleut aujourd'hui", type: "en-fr" },
+                { french: "What time is it?", english: "Quelle heure est-il?", type: "en-fr" },
+                { french: "Je me réveille tôt", english: "I wake up early", type: "fr-en" },
+                { french: "I brush my teeth", english: "Je me brosse les dents", type: "en-fr" },
                 
                 // Days and weather
                 { french: "Il fait beau dimanche", english: "It's nice weather on Sunday", type: "fr-en" },
                 { french: "Monday is cold", english: "Lundi il fait froid", type: "en-fr" },
                 { french: "Il neige en décembre", english: "It snows in December", type: "fr-en" },
                 { french: "Friday is hot", english: "Vendredi il fait chaud", type: "en-fr" },
+                { french: "Il pleut aujourd'hui", english: "It's raining today", type: "fr-en" },
+                { french: "The wind is strong", english: "Le vent est fort", type: "en-fr" },
+                { french: "J'aime les nuages blancs", english: "I like white clouds", type: "fr-en" },
+                { french: "Summer is my favorite season", english: "L'été est ma saison préférée", type: "en-fr" },
                 
-                // Activities and actions
+                // Activities and hobbies
                 { french: "J'aime jouer avec mon chien", english: "I like to play with my dog", type: "fr-en" },
                 { french: "I want to read a book", english: "Je veux lire un livre", type: "en-fr" },
                 { french: "Elle peut courir vite", english: "She can run fast", type: "fr-en" },
-                { french: "We eat breakfast in the kitchen", english: "Nous mangeons le petit déjeuner dans la cuisine", type: "en-fr" },
+                { french: "I like to draw pictures", english: "J'aime dessiner des images", type: "en-fr" },
+                { french: "Nous chantons une chanson", english: "We sing a song", type: "fr-en" },
+                { french: "I play the piano", english: "Je joue du piano", type: "en-fr" },
+                { french: "J'aime nager dans la piscine", english: "I like to swim in the pool", type: "fr-en" },
+                { french: "My friend likes to dance", english: "Mon ami aime danser", type: "en-fr" },
                 
-                // Descriptions and emotions
+                // Daily routines and time
+                { french: "Je me lève à sept heures", english: "I get up at seven o'clock", type: "fr-en" },
+                { french: "I go to bed at nine", english: "Je me couche à neuf heures", type: "en-fr" },
+                { french: "Nous mangeons le dîner ensemble", english: "We eat dinner together", type: "fr-en" },
+                { french: "I take a shower every day", english: "Je prends une douche tous les jours", type: "en-fr" },
+                { french: "Le matin, je bois du jus", english: "In the morning, I drink juice", type: "fr-en" },
+                { french: "After school, I play outside", english: "Après l'école, je joue dehors", type: "en-fr" },
+                
+                // Complex descriptions and emotions
                 { french: "Le gros éléphant est gris", english: "The fat elephant is gray", type: "fr-en" },
                 { french: "My new shoes are pretty", english: "Mes nouvelles chaussures sont jolies", type: "en-fr" },
                 { french: "Je suis heureux aujourd'hui", english: "I am happy today", type: "fr-en" },
-                { french: "The old horse is sad", english: "Le vieux cheval est triste", type: "en-fr" }
+                { french: "The old horse is sad", english: "Le vieux cheval est triste", type: "en-fr" },
+                { french: "Mon petit frère est mignon", english: "My little brother is cute", type: "fr-en" },
+                { french: "I feel excited about my birthday", english: "Je me sens excité pour mon anniversaire", type: "en-fr" },
+                
+                // Advanced activities and places
+                { french: "Nous visitons le musée", english: "We visit the museum", type: "fr-en" },
+                { french: "I go to the library", english: "Je vais à la bibliothèque", type: "en-fr" },
+                { french: "Le médecin est très gentil", english: "The doctor is very nice", type: "fr-en" },
+                { french: "My favorite restaurant is Italian", english: "Mon restaurant préféré est italien", type: "en-fr" },
+                { french: "J'aide ma mère à cuisiner", english: "I help my mother cook", type: "fr-en" },
+                { french: "We celebrate Christmas in December", english: "Nous célébrons Noël en décembre", type: "en-fr" },
+                
+                // Advanced emotions and states
+                { french: "Je suis fier de mon dessin", english: "I am proud of my drawing", type: "fr-en" },
+                { french: "I feel nervous about the test", english: "Je me sens nerveux à propos du test", type: "en-fr" },
+                { french: "Ma grand-mère me manque", english: "I miss my grandmother", type: "fr-en" },
+                { french: "I am surprised by the gift", english: "Je suis surpris par le cadeau", type: "en-fr" },
+                
+                // Complex actions and preferences
+                { french: "J'apprends à faire du vélo", english: "I am learning to ride a bike", type: "fr-en" },
+                { french: "My sister teaches me French", english: "Ma sœur m'apprend le français", type: "en-fr" },
+                { french: "Nous préparons le petit déjeuner", english: "We prepare breakfast", type: "fr-en" },
+                { french: "I collect stamps as a hobby", english: "Je collectionne les timbres comme hobby", type: "en-fr" }
             ]
         };
         
@@ -362,9 +494,23 @@
             nextQuestion();
         }
         
+        function setDirection(direction) {
+            currentDirection = direction;
+            document.querySelectorAll('.direction-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            nextQuestion();
+        }
+        
         function getRandomExercise() {
             const exerciseSet = exercises[currentDifficulty];
-            return exerciseSet[Math.floor(Math.random() * exerciseSet.length)];
+            
+            // Filter by direction if not mixed
+            let filteredExercises = exerciseSet;
+            if (currentDirection !== 'mixed') {
+                filteredExercises = exerciseSet.filter(exercise => exercise.type === currentDirection);
+            }
+            
+            return filteredExercises[Math.floor(Math.random() * filteredExercises.length)];
         }
         
         function nextQuestion() {
