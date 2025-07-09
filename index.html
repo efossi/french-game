@@ -37,6 +37,12 @@
             margin-bottom: 30px;
         }
         
+        .subtitle small {
+            color: #ff6b6b;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        
         .stats {
             display: flex;
             justify-content: space-around;
@@ -117,6 +123,19 @@
         .speaker-btn.playing {
             background: #4ecdc4;
             animation: pulse 1s infinite;
+        }
+        
+        .feedback .speaker-btn {
+            background: #4ecdc4;
+            width: 30px;
+            height: 30px;
+            font-size: 1em;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        
+        .feedback .speaker-btn:hover {
+            background: #45b7aa;
         }
         
         @keyframes pulse {
@@ -266,7 +285,8 @@
 <body>
     <div class="container">
         <h1>🇫🇷 French Translation Fun! 🇫🇷</h1>
-        <p class="subtitle">Practice your French vocabulary with fun exercises!</p>
+        <p class="subtitle">Practice your French vocabulary with fun exercises!<br>
+        <small>🔊 Click speaker buttons for authentic French pronunciation</small></p>
         
         <div class="stats">
             <div class="stat">
@@ -326,64 +346,89 @@
         let streakCount = 0;
         let currentDifficulty = 'easy';
         let currentDirection = 'mixed';
-        let speechSynthesis = window.speechSynthesis;
+        let currentAudio = null;
         let isSpeaking = false;
         
-        // Initialize speech synthesis
-        function initializeSpeech() {
-            if (speechSynthesis) {
-                // Load voices
-                speechSynthesis.getVoices();
-                
-                // Some browsers need this event to load voices
-                speechSynthesis.onvoiceschanged = function() {
-                    // Voices are now loaded
-                };
-            }
-        }
-        
         function speakText(source) {
-            if (!speechSynthesis) {
-                alert('Sorry, your browser doesn\'t support pronunciation playback!');
-                return;
-            }
-            
-            // Stop any current speech
-            if (isSpeaking) {
-                speechSynthesis.cancel();
+            // Stop any current audio
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
                 resetSpeakerButton();
-                return;
+                if (isSpeaking) {
+                    isSpeaking = false;
+                    return;
+                }
             }
             
             let textToSpeak = '';
-            let language = 'fr-FR'; // Default to French
+            let language = 'fr'; // Default to French
             
             if (source === 'question') {
                 // Always speak the French text for pronunciation practice
                 if (currentQuestion.type === 'fr-en') {
                     textToSpeak = currentQuestion.french;
-                    language = 'fr-FR';
+                    language = 'fr';
                 } else {
                     textToSpeak = currentQuestion.english; // This is the French answer they need to provide
-                    language = 'fr-FR';
+                    language = 'fr';
                 }
             } else if (source === 'answer') {
                 // Speak the correct answer
                 textToSpeak = currentQuestion.english;
-                language = currentQuestion.type === 'fr-en' ? 'en-US' : 'fr-FR';
+                language = currentQuestion.type === 'fr-en' ? 'en' : 'fr';
             }
             
             if (!textToSpeak) return;
             
-            const utterance = new SpeechSynthesisUtterance(textToSpeak);
-            utterance.lang = language;
-            utterance.rate = 0.8; // Slightly slower for learning
+            // Use Google Translate's text-to-speech service
+            const encodedText = encodeURIComponent(textToSpeak);
+            const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=${language}&client=tw-ob`;
+            
+            // Create audio element
+            currentAudio = new Audio(audioUrl);
+            
+            // Visual feedback
+            const speakerBtn = document.getElementById('speak-question');
+            if (speakerBtn) {
+                speakerBtn.classList.add('playing');
+            }
+            isSpeaking = true;
+            
+            currentAudio.onended = function() {
+                resetSpeakerButton();
+            };
+            
+            currentAudio.onerror = function() {
+                resetSpeakerButton();
+                // Fallback to browser speech synthesis
+                fallbackToSpeechSynthesis(textToSpeak, language);
+            };
+            
+            // Play the audio
+            currentAudio.play().catch(function(error) {
+                console.log('Audio playback failed:', error);
+                resetSpeakerButton();
+                // Fallback to browser speech synthesis
+                fallbackToSpeechSynthesis(textToSpeak, language);
+            });
+        }
+        
+        function fallbackToSpeechSynthesis(text, lang) {
+            if (!window.speechSynthesis) {
+                alert('Sorry, audio pronunciation is not available in your browser!');
+                return;
+            }
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = lang === 'fr' ? 'fr-FR' : 'en-US';
+            utterance.rate = 0.8;
             utterance.pitch = 1.0;
             
             // Try to find appropriate voice
             const voices = speechSynthesis.getVoices();
             const preferredVoice = voices.find(voice => 
-                voice.lang.startsWith(language.substring(0, 2)) && 
+                voice.lang.startsWith(lang) && 
                 (voice.name.includes('Female') || voice.name.includes('Male'))
             );
             
@@ -391,18 +436,12 @@
                 utterance.voice = preferredVoice;
             }
             
-            // Visual feedback
-            const speakerBtn = document.getElementById('speak-question');
-            speakerBtn.classList.add('playing');
-            isSpeaking = true;
-            
             utterance.onend = function() {
                 resetSpeakerButton();
             };
             
             utterance.onerror = function() {
                 resetSpeakerButton();
-                console.log('Speech synthesis error');
             };
             
             speechSynthesis.speak(utterance);
@@ -410,8 +449,11 @@
         
         function resetSpeakerButton() {
             const speakerBtn = document.getElementById('speak-question');
-            speakerBtn.classList.remove('playing');
+            if (speakerBtn) {
+                speakerBtn.classList.remove('playing');
+            }
             isSpeaking = false;
+            currentAudio = null;
         }
         
         // Exercise data organized by difficulty
@@ -648,9 +690,10 @@
         }
         
         function nextQuestion() {
-            // Stop any current speech
-            if (speechSynthesis && isSpeaking) {
-                speechSynthesis.cancel();
+            // Stop any current audio
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
                 resetSpeakerButton();
             }
             
@@ -683,7 +726,7 @@
                 feedback.className = 'feedback incorrect';
                 feedback.innerHTML = `
                     <span class="emoji">❌</span>Not quite right. The answer is: <strong>${currentQuestion.english}</strong>
-                    <button class="speaker-btn" onclick="speakText('answer')" title="Listen to correct answer" style="margin-left: 10px; width: 30px; height: 30px; font-size: 1em;">🔊</button>
+                    <button class="speaker-btn" onclick="speakText('answer')" title="Listen to pronunciation">🔊</button>
                 `;
             }
             
@@ -696,7 +739,7 @@
             feedback.className = 'feedback show-answer';
             feedback.innerHTML = `
                 <span class="emoji">💡</span>The answer is: <strong>${currentQuestion.english}</strong>
-                <button class="speaker-btn" onclick="speakText('answer')" title="Listen to answer" style="margin-left: 10px; width: 30px; height: 30px; font-size: 1em;">🔊</button>
+                <button class="speaker-btn" onclick="speakText('answer')" title="Listen to pronunciation">🔊</button>
             `;
             feedback.style.display = 'block';
         }
@@ -724,7 +767,6 @@
         }
         
         // Initialize with first question
-        initializeSpeech();
         nextQuestion();
     </script>
 </body>
