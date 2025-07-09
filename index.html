@@ -76,11 +76,53 @@
             transform: translateY(-5px);
         }
         
+        .question-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
         .question {
             font-size: 1.8em;
             color: #333;
-            margin-bottom: 20px;
             font-weight: bold;
+        }
+        
+        .speaker-btn {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 1.5em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .speaker-btn:hover {
+            background: #ff5252;
+            transform: scale(1.1);
+        }
+        
+        .speaker-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .speaker-btn.playing {
+            background: #4ecdc4;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
         }
         
         .direction {
@@ -256,7 +298,12 @@
         </div>
         
         <div class="exercise-card">
-            <div class="question" id="question"></div>
+            <div class="question-container">
+                <div class="question" id="question"></div>
+                <button class="speaker-btn" id="speak-question" onclick="speakText('question')" title="Listen to pronunciation">
+                    🔊
+                </button>
+            </div>
             <div class="direction" id="direction"></div>
             <div class="input-container">
                 <input type="text" id="answer-input" placeholder="Type your answer here..." onkeypress="handleKeyPress(event)">
@@ -279,6 +326,93 @@
         let streakCount = 0;
         let currentDifficulty = 'easy';
         let currentDirection = 'mixed';
+        let speechSynthesis = window.speechSynthesis;
+        let isSpeaking = false;
+        
+        // Initialize speech synthesis
+        function initializeSpeech() {
+            if (speechSynthesis) {
+                // Load voices
+                speechSynthesis.getVoices();
+                
+                // Some browsers need this event to load voices
+                speechSynthesis.onvoiceschanged = function() {
+                    // Voices are now loaded
+                };
+            }
+        }
+        
+        function speakText(source) {
+            if (!speechSynthesis) {
+                alert('Sorry, your browser doesn\'t support pronunciation playback!');
+                return;
+            }
+            
+            // Stop any current speech
+            if (isSpeaking) {
+                speechSynthesis.cancel();
+                resetSpeakerButton();
+                return;
+            }
+            
+            let textToSpeak = '';
+            let language = 'fr-FR'; // Default to French
+            
+            if (source === 'question') {
+                // Always speak the French text for pronunciation practice
+                if (currentQuestion.type === 'fr-en') {
+                    textToSpeak = currentQuestion.french;
+                    language = 'fr-FR';
+                } else {
+                    textToSpeak = currentQuestion.english; // This is the French answer they need to provide
+                    language = 'fr-FR';
+                }
+            } else if (source === 'answer') {
+                // Speak the correct answer
+                textToSpeak = currentQuestion.english;
+                language = currentQuestion.type === 'fr-en' ? 'en-US' : 'fr-FR';
+            }
+            
+            if (!textToSpeak) return;
+            
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
+            utterance.lang = language;
+            utterance.rate = 0.8; // Slightly slower for learning
+            utterance.pitch = 1.0;
+            
+            // Try to find appropriate voice
+            const voices = speechSynthesis.getVoices();
+            const preferredVoice = voices.find(voice => 
+                voice.lang.startsWith(language.substring(0, 2)) && 
+                (voice.name.includes('Female') || voice.name.includes('Male'))
+            );
+            
+            if (preferredVoice) {
+                utterance.voice = preferredVoice;
+            }
+            
+            // Visual feedback
+            const speakerBtn = document.getElementById('speak-question');
+            speakerBtn.classList.add('playing');
+            isSpeaking = true;
+            
+            utterance.onend = function() {
+                resetSpeakerButton();
+            };
+            
+            utterance.onerror = function() {
+                resetSpeakerButton();
+                console.log('Speech synthesis error');
+            };
+            
+            speechSynthesis.speak(utterance);
+        }
+        
+        function resetSpeakerButton() {
+            const speakerBtn = document.getElementById('speak-question');
+            speakerBtn.classList.remove('playing');
+            isSpeaking = false;
+        }
         
         // Exercise data organized by difficulty
         const exercises = {
@@ -514,6 +648,12 @@
         }
         
         function nextQuestion() {
+            // Stop any current speech
+            if (speechSynthesis && isSpeaking) {
+                speechSynthesis.cancel();
+                resetSpeakerButton();
+            }
+            
             currentQuestion = getRandomExercise();
             document.getElementById('question').textContent = currentQuestion.french;
             document.getElementById('direction').textContent = 
@@ -536,12 +676,15 @@
                 correctCount++;
                 streakCount++;
                 feedback.className = 'feedback correct';
-                feedback.innerHTML = '<span class="emoji">🎉</span>Correct! Great job!';
+                feedback.innerHTML = `<span class="emoji">🎉</span>Correct! Great job!`;
                 showCelebration();
             } else {
                 streakCount = 0;
                 feedback.className = 'feedback incorrect';
-                feedback.innerHTML = `<span class="emoji">❌</span>Not quite right. The answer is: <strong>${currentQuestion.english}</strong>`;
+                feedback.innerHTML = `
+                    <span class="emoji">❌</span>Not quite right. The answer is: <strong>${currentQuestion.english}</strong>
+                    <button class="speaker-btn" onclick="speakText('answer')" title="Listen to correct answer" style="margin-left: 10px; width: 30px; height: 30px; font-size: 1em;">🔊</button>
+                `;
             }
             
             feedback.style.display = 'block';
@@ -551,7 +694,10 @@
         function showAnswer() {
             const feedback = document.getElementById('feedback');
             feedback.className = 'feedback show-answer';
-            feedback.innerHTML = `<span class="emoji">💡</span>The answer is: <strong>${currentQuestion.english}</strong>`;
+            feedback.innerHTML = `
+                <span class="emoji">💡</span>The answer is: <strong>${currentQuestion.english}</strong>
+                <button class="speaker-btn" onclick="speakText('answer')" title="Listen to answer" style="margin-left: 10px; width: 30px; height: 30px; font-size: 1em;">🔊</button>
+            `;
             feedback.style.display = 'block';
         }
         
@@ -578,6 +724,7 @@
         }
         
         // Initialize with first question
+        initializeSpeech();
         nextQuestion();
     </script>
 </body>
