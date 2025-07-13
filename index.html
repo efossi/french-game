@@ -1422,4 +1422,183 @@
                 { french: "Drawing", english: "Dessin", type: "en-fr" },
                 { french: "Peinture", english: "Painting", type: "fr-en" },
                 { french: "Brush", english: "Pinceau", type: "en-fr" },
-                { french: "Couleur", english: "
+                ]
+        };
+        
+        function setDifficulty(difficulty) {
+            currentDifficulty = difficulty;
+            document.querySelectorAll('.difficulty-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            usedExercises.clear();
+            nextQuestion();
+        }
+        
+        function setDirection(direction) {
+            currentDirection = direction;
+            document.querySelectorAll('.direction-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            usedExercises.clear();
+            nextQuestion();
+        }
+        
+        function getRandomExercise() {
+            const exerciseSet = exercises[currentDifficulty];
+            
+            let filteredExercises = exerciseSet;
+            if (currentDirection !== 'mixed') {
+                filteredExercises = exerciseSet.filter(exercise => exercise.type === currentDirection);
+            }
+            
+            const availableExercises = filteredExercises.filter(exercise => {
+                const exerciseKey = `${exercise.french}-${exercise.english}-${exercise.type}`;
+                return !usedExercises.has(exerciseKey);
+            });
+            
+            if (availableExercises.length === 0) {
+                showCompletionMessage();
+                return null;
+            }
+            
+            const randomExercise = availableExercises[Math.floor(Math.random() * availableExercises.length)];
+            
+            const exerciseKey = `${randomExercise.french}-${randomExercise.english}-${randomExercise.type}`;
+            usedExercises.add(exerciseKey);
+            
+            return randomExercise;
+        }
+        
+        function updateProgress() {
+            const exerciseSet = exercises[currentDifficulty];
+            let filteredExercises = exerciseSet;
+            if (currentDirection !== 'mixed') {
+                filteredExercises = exerciseSet.filter(exercise => exercise.type === currentDirection);
+            }
+            
+            const totalExercises = filteredExercises.length;
+            const remainingExercises = totalExercises - usedExercises.size;
+            
+            document.getElementById('remaining-count').textContent = remainingExercises;
+            document.getElementById('progress-info').textContent = 
+                `Progress: ${usedExercises.size}/${totalExercises} exercises completed`;
+        }
+        
+        function showCompletionMessage() {
+            document.getElementById('completion-message').style.display = 'block';
+            document.querySelector('.exercise-card').style.display = 'none';
+        }
+        
+        function hideCompletionMessage() {
+            document.getElementById('completion-message').style.display = 'none';
+            document.querySelector('.exercise-card').style.display = 'block';
+        }
+        
+        function resetUsedExercises() {
+            usedExercises.clear();
+            hideCompletionMessage();
+            nextQuestion();
+        }
+        
+        function suggestNextLevel() {
+            if (currentDifficulty === 'easy') {
+                setDifficulty('medium');
+                document.querySelector('[onclick="setDifficulty(\'medium\')"]').classList.add('active');
+                document.querySelector('[onclick="setDifficulty(\'easy\')"]').classList.remove('active');
+            } else if (currentDifficulty === 'medium') {
+                setDifficulty('hard');
+                document.querySelector('[onclick="setDifficulty(\'hard\')"]').classList.add('active');
+                document.querySelector('[onclick="setDifficulty(\'medium\')"]').classList.remove('active');
+            } else {
+                alert('Congratulations! You\'ve completed all difficulty levels! 🎉');
+                return;
+            }
+            hideCompletionMessage();
+        }
+        
+        function nextQuestion() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+                resetSpeakerButton();
+            }
+            
+            const exercise = getRandomExercise();
+            if (!exercise) {
+                return;
+            }
+            
+            currentQuestion = exercise;
+            document.getElementById('question').textContent = currentQuestion.french;
+            document.getElementById('direction').textContent = 
+                currentQuestion.type === 'fr-en' ? 'Translate to English:' : 'Translate to French:';
+            document.getElementById('answer-input').value = '';
+            document.getElementById('feedback').style.display = 'none';
+            document.getElementById('celebration').style.display = 'none';
+            document.getElementById('answer-input').focus();
+            
+            updateProgress();
+        }
+        
+        function checkAnswer() {
+            const userAnswer = document.getElementById('answer-input').value.trim().toLowerCase();
+            const correctAnswer = currentQuestion.english.toLowerCase();
+            const feedback = document.getElementById('feedback');
+            
+            totalCount++;
+            document.getElementById('total-count').textContent = totalCount;
+            
+            if (userAnswer === correctAnswer) {
+                correctCount++;
+                streakCount++;
+                feedback.className = 'feedback correct';
+                feedback.innerHTML = `<span class="emoji">🎉</span>Correct! Great job!`;
+                showCelebration();
+            } else {
+                streakCount = 0;
+                feedback.className = 'feedback incorrect';
+                feedback.innerHTML = `
+                    <span class="emoji">❌</span>Not quite right. The answer is: <strong>${currentQuestion.english}</strong>
+                    <button class="speaker-btn" onclick="speakText('answer')" title="Listen to pronunciation">🔊</button>
+                `;
+            }
+            
+            feedback.style.display = 'block';
+            updateStats();
+        }
+        
+        function showAnswer() {
+            const feedback = document.getElementById('feedback');
+            feedback.className = 'feedback show-answer';
+            feedback.innerHTML = `
+                <span class="emoji">💡</span>The answer is: <strong>${currentQuestion.english}</strong>
+                <button class="speaker-btn" onclick="speakText('answer')" title="Listen to pronunciation">🔊</button>
+            `;
+            feedback.style.display = 'block';
+        }
+        
+        function updateStats() {
+            document.getElementById('correct-count').textContent = correctCount;
+            document.getElementById('streak-count').textContent = streakCount;
+        }
+        
+        function showCelebration() {
+            const celebration = document.getElementById('celebration');
+            const emojis = ['🎉', '🌟', '🎊', '🏆', '👏', '🎈', '✨', '🌈'];
+            celebration.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+            celebration.style.display = 'block';
+            
+            setTimeout(() => {
+                celebration.style.display = 'none';
+            }, 2000);
+        }
+        
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                checkAnswer();
+            }
+        }
+        
+        // Initialize with first question
+        nextQuestion();
+    </script>
+</body>
+</html>
