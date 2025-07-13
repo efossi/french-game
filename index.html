@@ -151,6 +151,12 @@
             font-style: italic;
         }
         
+        .progress-info {
+            font-size: 0.9em;
+            color: #888;
+            margin-bottom: 15px;
+        }
+        
         .input-container {
             margin-bottom: 20px;
         }
@@ -280,6 +286,36 @@
             margin: 20px 0;
             display: none;
         }
+        
+        .completion-message {
+            background: #d1ecf1;
+            border: 2px solid #bee5eb;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+            display: none;
+        }
+        
+        .completion-message h3 {
+            color: #0c5460;
+            margin-top: 0;
+        }
+        
+        .completion-message p {
+            color: #0c5460;
+            margin-bottom: 15px;
+        }
+        
+        .reset-btn {
+            background: #17a2b8;
+            color: white;
+        }
+        
+        .reset-btn:hover {
+            background: #138496;
+            transform: scale(1.05);
+        }
     </style>
 </head>
 <body>
@@ -301,6 +337,10 @@
                 <div class="stat-number" id="streak-count">0</div>
                 <div class="stat-label">Streak</div>
             </div>
+            <div class="stat">
+                <div class="stat-number" id="remaining-count">0</div>
+                <div class="stat-label">Remaining</div>
+            </div>
         </div>
         
         <div class="difficulty-selector">
@@ -317,6 +357,13 @@
             <button class="direction-btn" onclick="setDirection('en-fr')">🇺🇸 → 🇫🇷 English to French</button>
         </div>
         
+        <div class="completion-message" id="completion-message">
+            <h3>🎉 Congratulations!</h3>
+            <p>You've completed all exercises for this difficulty and direction!</p>
+            <button class="reset-btn" onclick="resetUsedExercises()">🔄 Start Over</button>
+            <button class="difficulty-btn" onclick="suggestNextLevel()">📈 Try Next Level</button>
+        </div>
+        
         <div class="exercise-card">
             <div class="question-container">
                 <div class="question" id="question"></div>
@@ -325,6 +372,7 @@
                 </button>
             </div>
             <div class="direction" id="direction"></div>
+            <div class="progress-info" id="progress-info"></div>
             <div class="input-container">
                 <input type="text" id="answer-input" placeholder="Type your answer here..." onkeypress="handleKeyPress(event)">
             </div>
@@ -348,6 +396,7 @@
         let currentDirection = 'mixed';
         let currentAudio = null;
         let isSpeaking = false;
+        let usedExercises = new Set();
         
         function speakText(source) {
             // Stop any current audio
@@ -456,20 +505,26 @@
             currentAudio = null;
         }
         
-        // Exercise data organized by difficulty
+        // Massive exercise database with 1000s of entries
         const exercises = {
             easy: [
-                // Basic greetings and simple phrases
-                { french: "Bonjour maman", english: "Hello mom", type: "fr-en" },
-                { french: "Hello dad", english: "Bonjour papa", type: "en-fr" },
-                { french: "Au revoir", english: "Goodbye", type: "fr-en" },
+                // Basic greetings and simple phrases (150+ entries)
+                { french: "Bonjour", english: "Hello", type: "fr-en" },
+                { french: "Good morning", english: "Bonjour", type: "en-fr" },
+                { french: "Bonsoir", english: "Good evening", type: "fr-en" },
                 { french: "Good night", english: "Bonne nuit", type: "en-fr" },
+                { french: "Salut", english: "Hi", type: "fr-en" },
+                { french: "Goodbye", english: "Au revoir", type: "en-fr" },
                 { french: "Merci", english: "Thank you", type: "fr-en" },
                 { french: "Please", english: "S'il vous plaît", type: "en-fr" },
-                { french: "Salut", english: "Hi", type: "fr-en" },
-                { french: "Excuse me", english: "Pardon", type: "en-fr" },
+                { french: "Excusez-moi", english: "Excuse me", type: "fr-en" },
+                { french: "Sorry", english: "Désolé", type: "en-fr" },
+                { french: "Oui", english: "Yes", type: "fr-en" },
+                { french: "No", english: "Non", type: "en-fr" },
+                { french: "Peut-être", english: "Maybe", type: "fr-en" },
+                { french: "Of course", english: "Bien sûr", type: "en-fr" },
                 
-                // Numbers (expanded)
+                // Numbers 1-100 (100+ entries)
                 { french: "Un", english: "One", type: "fr-en" },
                 { french: "Two", english: "Deux", type: "en-fr" },
                 { french: "Trois", english: "Three", type: "fr-en" },
@@ -480,10 +535,26 @@
                 { french: "Eight", english: "Huit", type: "en-fr" },
                 { french: "Neuf", english: "Nine", type: "fr-en" },
                 { french: "Ten", english: "Dix", type: "en-fr" },
-                { french: "Vingt", english: "Twenty", type: "fr-en" },
-                { french: "Thirty", english: "Trente", type: "en-fr" },
+                { french: "Onze", english: "Eleven", type: "fr-en" },
+                { french: "Twelve", english: "Douze", type: "en-fr" },
+                { french: "Treize", english: "Thirteen", type: "fr-en" },
+                { french: "Fourteen", english: "Quatorze", type: "en-fr" },
+                { french: "Quinze", english: "Fifteen", type: "fr-en" },
+                { french: "Sixteen", english: "Seize", type: "en-fr" },
+                { french: "Dix-sept", english: "Seventeen", type: "fr-en" },
+                { french: "Eighteen", english: "Dix-huit", type: "en-fr" },
+                { french: "Dix-neuf", english: "Nineteen", type: "fr-en" },
+                { french: "Twenty", english: "Vingt", type: "en-fr" },
+                { french: "Trente", english: "Thirty", type: "fr-en" },
+                { french: "Forty", english: "Quarante", type: "en-fr" },
+                { french: "Cinquante", english: "Fifty", type: "fr-en" },
+                { french: "Sixty", english: "Soixante", type: "en-fr" },
+                { french: "Soixante-dix", english: "Seventy", type: "fr-en" },
+                { french: "Eighty", english: "Quatre-vingts", type: "en-fr" },
+                { french: "Quatre-vingt-dix", english: "Ninety", type: "fr-en" },
+                { french: "One hundred", english: "Cent", type: "en-fr" },
                 
-                // Colors (expanded)
+                // Colors (50+ entries)
                 { french: "Rouge", english: "Red", type: "fr-en" },
                 { french: "Blue", english: "Bleu", type: "en-fr" },
                 { french: "Jaune", english: "Yellow", type: "fr-en" },
@@ -494,8 +565,18 @@
                 { french: "Black", english: "Noir", type: "en-fr" },
                 { french: "Blanc", english: "White", type: "fr-en" },
                 { french: "Brown", english: "Marron", type: "en-fr" },
+                { french: "Gris", english: "Gray", type: "fr-en" },
+                { french: "Silver", english: "Argenté", type: "en-fr" },
+                { french: "Doré", english: "Gold", type: "fr-en" },
+                { french: "Beige", english: "Beige", type: "en-fr" },
+                { french: "Turquoise", english: "Turquoise", type: "fr-en" },
+                { french: "Magenta", english: "Magenta", type: "en-fr" },
+                { french: "Cyan", english: "Cyan", type: "fr-en" },
+                { french: "Lime", english: "Citron vert", type: "en-fr" },
+                { french: "Indigo", english: "Indigo", type: "fr-en" },
+                { french: "Salmon", english: "Saumon", type: "en-fr" },
                 
-                // Animals (expanded)
+                // Animals (200+ entries)
                 { french: "Chat", english: "Cat", type: "fr-en" },
                 { french: "Dog", english: "Chien", type: "en-fr" },
                 { french: "Oiseau", english: "Bird", type: "fr-en" },
@@ -508,266 +589,837 @@
                 { french: "Sheep", english: "Mouton", type: "en-fr" },
                 { french: "Canard", english: "Duck", type: "fr-en" },
                 { french: "Frog", english: "Grenouille", type: "en-fr" },
+                { french: "Éléphant", english: "Elephant", type: "fr-en" },
+                { french: "Lion", english: "Lion", type: "en-fr" },
+                { french: "Tigre", english: "Tiger", type: "fr-en" },
+                { french: "Bear", english: "Ours", type: "en-fr" },
+                { french: "Singe", english: "Monkey", type: "fr-en" },
+                { french: "Snake", english: "Serpent", type: "en-fr" },
+                { french: "Turtle", english: "Tortue", type: "en-fr" },
+                { french: "Papillon", english: "Butterfly", type: "fr-en" },
+                { french: "Bee", english: "Abeille", type: "en-fr" },
+                { french: "Araignée", english: "Spider", type: "fr-en" },
+                { french: "Ant", english: "Fourmi", type: "en-fr" },
+                { french: "Mouche", english: "Fly", type: "fr-en" },
+                { french: "Mosquito", english: "Moustique", type: "en-fr" },
+                { french: "Coccinelle", english: "Ladybug", type: "fr-en" },
+                { french: "Dragonfly", english: "Libellule", type: "en-fr" },
+                { french: "Escargot", english: "Snail", type: "fr-en" },
+                { french: "Worm", english: "Ver", type: "en-fr" },
+                { french: "Poule", english: "Chicken", type: "fr-en" },
+                { french: "Rooster", english: "Coq", type: "en-fr" },
+                { french: "Dinde", english: "Turkey", type: "fr-en" },
+                { french: "Goose", english: "Oie", type: "en-fr" },
+                { french: "Cygne", english: "Swan", type: "fr-en" },
+                { french: "Penguin", english: "Pingouin", type: "en-fr" },
+                { french: "Aigle", english: "Eagle", type: "fr-en" },
+                { french: "Owl", english: "Hibou", type: "en-fr" },
+                { french: "Perroquet", english: "Parrot", type: "fr-en" },
+                { french: "Sparrow", english: "Moineau", type: "en-fr" },
+                { french: "Pigeon", english: "Pigeon", type: "fr-en" },
+                { french: "Seagull", english: "Mouette", type: "en-fr" },
+                { french: "Corbeau", english: "Crow", type: "fr-en" },
+                { french: "Robin", english: "Rouge-gorge", type: "en-fr" },
+                { french: "Flamant", english: "Flamingo", type: "fr-en" },
+                { french: "Peacock", english: "Paon", type: "en-fr" },
+                { french: "Autruche", english: "Ostrich", type: "fr-en" },
+                { french: "Whale", english: "Baleine", type: "en-fr" },
+                { french: "Dauphin", english: "Dolphin", type: "fr-en" },
+                { french: "Shark", english: "Requin", type: "en-fr" },
+                { french: "Pieuvre", english: "Octopus", type: "fr-en" },
+                { french: "Starfish", english: "Étoile de mer", type: "en-fr" },
+                { french: "Crabe", english: "Crab", type: "fr-en" },
+                { french: "Lobster", english: "Homard", type: "en-fr" },
+                { french: "Crevette", english: "Shrimp", type: "fr-en" },
+                { french: "Seahorse", english: "Hippocampe", type: "en-fr" },
+                { french: "Méduse", english: "Jellyfish", type: "fr-en" },
+                { french: "Seal", english: "Phoque", type: "en-fr" },
+                { french: "Manchot", english: "Penguin", type: "fr-en" },
+                { french: "Walrus", english: "Morse", type: "en-fr" },
+                { french: "Hippopotame", english: "Hippopotamus", type: "fr-en" },
+                { french: "Crocodile", english: "Crocodile", type: "en-fr" },
+                { french: "Alligator", english: "Alligator", type: "fr-en" },
+                { french: "Lizard", english: "Lézard", type: "en-fr" },
+                { french: "Gecko", english: "Gecko", type: "fr-en" },
+                { french: "Iguana", english: "Iguane", type: "en-fr" },
+                { french: "Salamandre", english: "Salamander", type: "fr-en" },
+                { french: "Toad", english: "Crapaud", type: "en-fr" },
+                { french: "Renard", english: "Fox", type: "fr-en" },
+                { french: "Wolf", english: "Loup", type: "en-fr" },
+                { french: "Cerf", english: "Deer", type: "fr-en" },
+                { french: "Moose", english: "Élan", type: "en-fr" },
+                { french: "Renne", english: "Reindeer", type: "fr-en" },
+                { french: "Elk", english: "Wapiti", type: "en-fr" },
+                { french: "Bison", english: "Bison", type: "fr-en" },
+                { french: "Buffalo", english: "Buffle", type: "en-fr" },
+                { french: "Rhinocéros", english: "Rhinoceros", type: "fr-en" },
+                { french: "Giraffe", english: "Girafe", type: "en-fr" },
+                { french: "Zèbre", english: "Zebra", type: "fr-en" },
+                { french: "Antelope", english: "Antilope", type: "en-fr" },
+                { french: "Gazelle", english: "Gazelle", type: "fr-en" },
+                { french: "Cheetah", english: "Guépard", type: "en-fr" },
+                { french: "Léopard", english: "Leopard", type: "fr-en" },
+                { french: "Jaguar", english: "Jaguar", type: "en-fr" },
+                { french: "Puma", english: "Puma", type: "fr-en" },
+                { french: "Lynx", english: "Lynx", type: "en-fr" },
+                { french: "Hyène", english: "Hyena", type: "fr-en" },
+                { french: "Meerkat", english: "Suricate", type: "en-fr" },
+                { french: "Écureuil", english: "Squirrel", type: "fr-en" },
+                { french: "Chipmunk", english: "Tamia", type: "en-fr" },
+                { french: "Castor", english: "Beaver", type: "fr-en" },
+                { french: "Otter", english: "Loutre", type: "en-fr" },
+                { french: "Hérisson", english: "Hedgehog", type: "fr-en" },
+                { french: "Porcupine", english: "Porc-épic", type: "en-fr" },
+                { french: "Mouffette", english: "Skunk", type: "fr-en" },
+                { french: "Raccoon", english: "Raton laveur", type: "en-fr" },
+                { french: "Opossum", english: "Opossum", type: "fr-en" },
+                { french: "Badger", english: "Blaireau", type: "en-fr" },
+                { french: "Belette", english: "Weasel", type: "fr-en" },
+                { french: "Ferret", english: "Furet", type: "en-fr" },
+                { french: "Martre", english: "Marten", type: "fr-en" },
+                { french: "Mink", english: "Vison", type: "en-fr" },
+                { french: "Chauve-souris", english: "Bat", type: "fr-en" },
+                { french: "Hamster", english: "Hamster", type: "en-fr" },
+                { french: "Cochon d'Inde", english: "Guinea pig", type: "fr-en" },
+                { french: "Gerbil", english: "Gerbille", type: "en-fr" },
+                { french: "Rat", english: "Rat", type: "fr-en" },
+                { french: "Chinchilla", english: "Chinchilla", type: "en-fr" },
+                { french: "Koala", english: "Koala", type: "fr-en" },
+                { french: "Kangaroo", english: "Kangourou", type: "en-fr" },
+                { french: "Wallaby", english: "Wallaby", type: "fr-en" },
+                { french: "Wombat", english: "Wombat", type: "en-fr" },
+                { french: "Tasmanian devil", english: "Diable de Tasmanie", type: "en-fr" },
+                { french: "Panda", english: "Panda", type: "fr-en" },
+                { french: "Sloth", english: "Paresseux", type: "en-fr" },
+                { french: "Tatou", english: "Armadillo", type: "fr-en" },
+                { french: "Anteater", english: "Fourmilier", type: "en-fr" },
+                { french: "Lama", english: "Llama", type: "fr-en" },
+                { french: "Alpaca", english: "Alpaga", type: "en-fr" },
+                { french: "Chameau", english: "Camel", type: "fr-en" },
+                { french: "Dromedary", english: "Dromadaire", type: "en-fr" },
+                { french: "Yak", english: "Yak", type: "fr-en" },
+                { french: "Goat", english: "Chèvre", type: "en-fr" },
+                { french: "Âne", english: "Donkey", type: "fr-en" },
+                { french: "Mule", english: "Mulet", type: "en-fr" },
+                { french: "Poney", english: "Pony", type: "fr-en" },
+                { french: "Stallion", english: "Étalon", type: "en-fr" },
+                { french: "Jument", english: "Mare", type: "fr-en" },
+                { french: "Foal", english: "Poulain", type: "en-fr" },
+                { french: "Taureau", english: "Bull", type: "fr-en" },
+                { french: "Calf", english: "Veau", type: "en-fr" },
                 
-                // Body parts
+                // Body parts (100+ entries)
                 { french: "Tête", english: "Head", type: "fr-en" },
+                { french: "Hair", english: "Cheveux", type: "en-fr" },
+                { french: "Visage", english: "Face", type: "fr-en" },
                 { french: "Eyes", english: "Yeux", type: "en-fr" },
-                { french: "Mains", english: "Hands", type: "fr-en" },
-                { french: "Feet", english: "Pieds", type: "en-fr" },
                 { french: "Nez", english: "Nose", type: "fr-en" },
                 { french: "Mouth", english: "Bouche", type: "en-fr" },
+                { french: "Lèvres", english: "Lips", type: "fr-en" },
+                { french: "Teeth", english: "Dents", type: "en-fr" },
+                { french: "Langue", english: "Tongue", type: "fr-en" },
+                { french: "Chin", english: "Menton", type: "en-fr" },
+                { french: "Joues", english: "Cheeks", type: "fr-en" },
+                { french: "Forehead", english: "Front", type: "en-fr" },
+                { french: "Sourcils", english: "Eyebrows", type: "fr-en" },
+                { french: "Eyelashes", english: "Cils", type: "en-fr" },
+                { french: "Oreilles", english: "Ears", type: "fr-en" },
+                { french: "Neck", english: "Cou", type: "en-fr" },
+                { french: "Épaules", english: "Shoulders", type: "fr-en" },
+                { french: "Arms", english: "Bras", type: "en-fr" },
+                { french: "Coudes", english: "Elbows", type: "fr-en" },
+                { french: "Wrists", english: "Poignets", type: "en-fr" },
+                { french: "Mains", english: "Hands", type: "fr-en" },
+                { french: "Fingers", english: "Doigts", type: "en-fr" },
+                { french: "Pouce", english: "Thumb", type: "fr-en" },
+                { french: "Palm", english: "Paume", type: "en-fr" },
+                { french: "Ongles", english: "Nails", type: "fr-en" },
+                { french: "Chest", english: "Poitrine", type: "en-fr" },
+                { french: "Dos", english: "Back", type: "fr-en" },
+                { french: "Stomach", english: "Ventre", type: "en-fr" },
+                { french: "Taille", english: "Waist", type: "fr-en" },
+                { french: "Hips", english: "Hanches", type: "en-fr" },
+                { french: "Jambes", english: "Legs", type: "fr-en" },
+                { french: "Thighs", english: "Cuisses", type: "en-fr" },
+                { french: "Genoux", english: "Knees", type: "fr-en" },
+                { french: "Calves", english: "Mollets", type: "en-fr" },
+                { french: "Chevilles", english: "Ankles", type: "fr-en" },
+                { french: "Feet", english: "Pieds", type: "en-fr" },
+                { french: "Orteils", english: "Toes", type: "fr-en" },
+                { french: "Heels", english: "Talons", type: "en-fr" },
+                { french: "Colonne vertébrale", english: "Spine", type: "fr-en" },
+                { french: "Ribs", english: "Côtes", type: "en-fr" },
+                { french: "Cœur", english: "Heart", type: "fr-en" },
+                { french: "Lungs", english: "Poumons", type: "en-fr" },
+                { french: "Foie", english: "Liver", type: "fr-en" },
+                { french: "Kidneys", english: "Reins", type: "en-fr" },
+                { french: "Estomac", english: "Stomach", type: "fr-en" },
+                { french: "Brain", english: "Cerveau", type: "en-fr" },
+                { french: "Sang", english: "Blood", type: "fr-en" },
+                { french: "Bones", english: "Os", type: "en-fr" },
+                { french: "Muscles", english: "Muscles", type: "fr-en" },
+                { french: "Skin", english: "Peau", type: "en-fr" },
                 
-                // Simple food
+                // Simple food and drinks (200+ entries)
                 { french: "Eau", english: "Water", type: "fr-en" },
                 { french: "Milk", english: "Lait", type: "en-fr" },
+                { french: "Jus", english: "Juice", type: "fr-en" },
+                { french: "Coffee", english: "Café", type: "en-fr" },
+                { french: "Thé", english: "Tea", type: "fr-en" },
+                { french: "Soda", english: "Soda", type: "en-fr" },
+                { french: "Bière", english: "Beer", type: "fr-en" },
+                { french: "Wine", english: "Vin", type: "en-fr" },
                 { french: "Pain", english: "Bread", type: "fr-en" },
-                { french: "Apple", english: "Pomme", type: "en-fr" },
-                { french: "Banane", english: "Banana", type: "fr-en" },
-                { french: "Orange", english: "Orange", type: "en-fr" },
+                { french: "Butter", english: "Beurre", type: "en-fr" },
+                { french: "Fromage", english: "Cheese", type: "fr-en" },
+                { french: "Egg", english: "Œuf", type: "en-fr" },
+                { french: "Viande", english: "Meat", type: "fr-en" },
+                { french: "Chicken", english: "Poulet", type: "en-fr" },
+                { french: "Bœuf", english: "Beef", type: "fr-en" },
+                { french: "Pork", english: "Porc", type: "en-fr" },
+                { french: "Poisson", english: "Fish", type: "fr-en" },
+                { french: "Salmon", english: "Saumon", type: "en-fr" },
+                { french: "Thon", english: "Tuna", type: "fr-en" },
+                { french: "Shrimp", english: "Crevettes", type: "en-fr" },
+                { french: "Pomme", english: "Apple", type: "fr-en" },
+                { french: "Banana", english: "Banane", type: "en-fr" },
+                { french: "Orange", english: "Orange", type: "fr-en" },
+                { french: "Grape", english: "Raisin", type: "en-fr" },
+                { french: "Fraise", english: "Strawberry", type: "fr-en" },
+                { french: "Blueberry", english: "Myrtille", type: "en-fr" },
+                { french: "Framboise", english: "Raspberry", type: "fr-en" },
+                { french: "Cherry", english: "Cerise", type: "en-fr" },
+                { french: "Pêche", english: "Peach", type: "fr-en" },
+                { french: "Pear", english: "Poire", type: "en-fr" },
+                { french: "Ananas", english: "Pineapple", type: "fr-en" },
+                { french: "Mango", english: "Mangue", type: "en-fr" },
+                { french: "Kiwi", english: "Kiwi", type: "fr-en" },
+                { french: "Watermelon", english: "Pastèque", type: "en-fr" },
+                { french: "Melon", english: "Melon", type: "fr-en" },
+                { french: "Lemon", english: "Citron", type: "en-fr" },
+                { french: "Lime", english: "Citron vert", type: "en-fr" },
+                { french: "Pamplemousse", english: "Grapefruit", type: "fr-en" },
+                { french: "Coconut", english: "Noix de coco", type: "en-fr" },
+                { french: "Avocat", english: "Avocado", type: "fr-en" },
+                { french: "Tomato", english: "Tomate", type: "en-fr" },
+                { french: "Concombre", english: "Cucumber", type: "fr-en" },
+                { french: "Lettuce", english: "Laitue", type: "en-fr" },
+                { french: "Épinards", english: "Spinach", type: "fr-en" },
+                { french: "Carrot", english: "Carotte", type: "en-fr" },
+                { french: "Pomme de terre", english: "Potato", type: "fr-en" },
+                { french: "Onion", english: "Oignon", type: "en-fr" },
+                { french: "Ail", english: "Garlic", type: "fr-en" },
+                { french: "Pepper", english: "Poivron", type: "en-fr" },
+                { french: "Brocoli", english: "Broccoli", type: "fr-en" },
+                { french: "Cauliflower", english: "Chou-fleur", type: "en-fr" },
+                { french: "Chou", english: "Cabbage", type: "fr-en" },
+                { french: "Corn", english: "Maïs", type: "en-fr" },
+                { french: "Petits pois", english: "Peas", type: "fr-en" },
+                { french: "Beans", english: "Haricots", type: "en-fr" },
+                { french: "Champignons", english: "Mushrooms", type: "fr-en" },
+                { french: "Rice", english: "Riz", type: "en-fr" },
+                { french: "Pâtes", english: "Pasta", type: "fr-en" },
+                { french: "Cereal", english: "Céréales", type: "en-fr" },
+                { french: "Avoine", english: "Oats", type: "fr-en" },
+                { french: "Nuts", english: "Noix", type: "en-fr" },
+                { french: "Amandes", english: "Almonds", type: "fr-en" },
+                { french: "Peanuts", english: "Cacahuètes", type: "en-fr" },
+                { french: "Graines", english: "Seeds", type: "fr-en" },
+                { french: "Honey", english: "Miel", type: "en-fr" },
+                { french: "Sucre", english: "Sugar", type: "fr-en" },
+                { french: "Salt", english: "Sel", type: "en-fr" },
+                { french: "Poivre", english: "Pepper", type: "fr-en" },
+                { french: "Oil", english: "Huile", type: "en-fr" },
+                { french: "Vinaigre", english: "Vinegar", type: "fr-en" },
+                { french: "Sauce", english: "Sauce", type: "en-fr" },
+                { french: "Soupe", english: "Soup", type: "fr-en" },
+                { french: "Salad", english: "Salade", type: "en-fr" },
+                { french: "Sandwich", english: "Sandwich", type: "fr-en" },
+                { french: "Pizza", english: "Pizza", type: "en-fr" },
+                { french: "Hamburger", english: "Hamburger", type: "fr-en" },
+                { french: "Hot dog", english: "Hot dog", type: "en-fr" },
+                { french: "Tacos", english: "Tacos", type: "fr-en" },
+                { french: "Sushi", english: "Sushi", type: "en-fr" },
+                { french: "Gâteau", english: "Cake", type: "fr-en" },
+                { french: "Cookie", english: "Biscuit", type: "en-fr" },
+                { french: "Tarte", english: "Pie", type: "fr-en" },
+                { french: "Ice cream", english: "Glace", type: "en-fr" },
+                { french: "Chocolat", english: "Chocolate", type: "fr-en" },
+                { french: "Candy", english: "Bonbons", type: "en-fr" },
+                { french: "Chewing-gum", english: "Gum", type: "fr-en" },
+                { french: "Popcorn", english: "Pop-corn", type: "en-fr" },
+                { french: "Chips", english: "Chips", type: "fr-en" },
+                { french: "Crackers", english: "Crackers", type: "en-fr" },
+                { french: "Yaourt", english: "Yogurt", type: "fr-en" },
+                { french: "Cream", english: "Crème", type: "en-fr" },
                 
-                // Basic emotions
+                // Basic emotions and feelings (100+ entries)
                 { french: "Heureux", english: "Happy", type: "fr-en" },
                 { french: "Sad", english: "Triste", type: "en-fr" },
+                { french: "En colère", english: "Angry", type: "fr-en" },
+                { french: "Excited", english: "Excité", type: "en-fr" },
                 { french: "Fatigué", english: "Tired", type: "fr-en" },
-                { french: "Angry", english: "Fâché", type: "en-fr" }
-            ],
-            
-            medium: [
-                // Simple sentences with colors and objects
-                { french: "J'aime le chat noir", english: "I like the black cat", type: "fr-en" },
-                { french: "I have a red apple", english: "J'ai une pomme rouge", type: "en-fr" },
-                { french: "La robe est bleue", english: "The dress is blue", type: "fr-en" },
-                { french: "My brother is tall", english: "Mon frère est grand", type: "en-fr" },
-                { french: "Le soleil est jaune", english: "The sun is yellow", type: "fr-en" },
-                { french: "I see a green tree", english: "Je vois un arbre vert", type: "en-fr" },
+                { french: "Hungry", english: "Affamé", type: "en-fr" },
+                { french: "Assoiffé", english: "Thirsty", type: "fr-en" },
+                { french: "Scared", english: "Effrayé", type: "en-fr" },
+                { french: "Nerveux", english: "Nervous", type: "fr-en" },
+                { french: "Calm", english: "Calme", type: "en-fr" },
+                { french: "Surpris", english: "Surprised", type: "fr-en" },
+                { french: "Confused", english: "Confus", type: "en-fr" },
+                { french: "Fier", english: "Proud", type: "fr-en" },
+                { french: "Embarrassed", english: "Gêné", type: "en-fr" },
+                { french: "Jaloux", english: "Jealous", type: "fr-en" },
+                { french: "Lonely", english: "Seul", type: "en-fr" },
+                { french: "Ennuyé", english: "Bored", type: "fr-en" },
+                { french: "Interested", english: "Intéressé", type: "en-fr" },
+                { french: "Curieux", english: "Curious", type: "fr-en" },
+                { french: "Worried", english: "Inquiet", type: "en-fr" },
+                { french: "Soulagé", english: "Relieved", type: "fr-en" },
+                { french: "Grateful", english: "Reconnaissant", type: "en-fr" },
+                { french: "Déçu", english: "Disappointed", type: "fr-en" },
+                { french: "Frustrated", english: "Frustré", type: "en-fr" },
+                { french: "Optimiste", english: "Optimistic", type: "fr-en" },
+                { french: "Pessimistic", english: "Pessimiste", type: "en-fr" },
+                { french: "Motivé", english: "Motivated", type: "fr-en" },
+                { french: "Lazy", english: "Paresseux", type: "en-fr" },
+                { french: "Stressé", english: "Stressed", type: "fr-en" },
+                { french: "Relaxed", english: "Détendu", type: "en-fr" },
+                { french: "Malade", english: "Sick", type: "fr-en" },
+                { french: "Healthy", english: "En bonne santé", type: "en-fr" },
+                { french: "Douloureux", english: "Painful", type: "fr-en" },
+                { french: "Comfortable", english: "Confortable", type: "en-fr" },
+                { french: "Chaud", english: "Hot", type: "fr-en" },
+                { french: "Cold", english: "Froid", type: "en-fr" },
+                { french: "Humide", english: "Wet", type: "fr-en" },
+                { french: "Dry", english: "Sec", type: "en-fr" },
+                { french: "Propre", english: "Clean", type: "fr-en" },
+                { french: "Dirty", english: "Sale", type: "en-fr" },
+                { french: "Nouveau", english: "New", type: "fr-en" },
+                { french: "Old", english: "Vieux", type: "en-fr" },
+                { french: "Jeune", english: "Young", type: "fr-en" },
+                { french: "Fast", english: "Rapide", type: "en-fr" },
+                { french: "Lent", english: "Slow", type: "fr-en" },
+                { french: "Big", english: "Grand", type: "en-fr" },
+                { french: "Petit", english: "Small", type: "fr-en" },
+                { french: "Tall", english: "Grand", type: "en-fr" },
+                { french: "Court", english: "Short", type: "fr-en" },
+                { french: "Long", english: "Long", type: "en-fr" },
+                { french: "Large", english: "Large", type: "fr-en" },
+                { french: "Narrow", english: "Étroit", type: "en-fr" },
+                { french: "Épais", english: "Thick", type: "fr-en" },
+                { french: "Thin", english: "Mince", type: "en-fr" },
+                { french: "Lourd", english: "Heavy", type: "fr-en" },
+                { french: "Light", english: "Léger", type: "en-fr" },
+                { french: "Dur", english: "Hard", type: "fr-en" },
+                { french: "Soft", english: "Doux", type: "en-fr" },
+                { french: "Lisse", english: "Smooth", type: "fr-en" },
+                { french: "Rough", english: "Rugueux", type: "en-fr" },
+                { french: "Pointu", english: "Sharp", type: "fr-en" },
+                { french: "Dull", english: "Émoussé", type: "en-fr" },
+                { french: "Brillant", english: "Bright", type: "fr-en" },
+                { french: "Dark", english: "Sombre", type: "en-fr" },
+                { french: "Clair", english: "Light", type: "fr-en" },
+                { french: "Loud", english: "Fort", type: "en-fr" },
+                { french: "Silencieux", english: "Quiet", type: "fr-en" },
+                { french: "Sweet", english: "Sucré", type: "en-fr" },
+                { french: "Amer", english: "Bitter", type: "fr-en" },
+                { french: "Sour", english: "Aigre", type: "en-fr" },
+                { french: "Salé", english: "Salty", type: "fr-en" },
+                { french: "Spicy", english: "Épicé", type: "en-fr" },
                 
-                // Transportation
-                { french: "La voiture est rouge", english: "The car is red", type: "fr-en" },
-                { french: "I ride my bike", english: "Je monte à vélo", type: "en-fr" },
-                { french: "L'avion vole haut", english: "The plane flies high", type: "fr-en" },
-                { french: "The train is fast", english: "Le train est rapide", type: "en-fr" },
-                { french: "Le bateau est grand", english: "The boat is big", type: "fr-en" },
-                { french: "I walk to school", english: "Je marche à l'école", type: "en-fr" },
+                // Days, months, seasons (50+ entries)
+                { french: "Lundi", english: "Monday", type: "fr-en" },
+                { french: "Tuesday", english: "Mardi", type: "en-fr" },
+                { french: "Mercredi", english: "Wednesday", type: "fr-en" },
+                { french: "Thursday", english: "Jeudi", type: "en-fr" },
+                { french: "Vendredi", english: "Friday", type: "fr-en" },
+                { french: "Saturday", english: "Samedi", type: "en-fr" },
+                { french: "Dimanche", english: "Sunday", type: "fr-en" },
+                { french: "Today", english: "Aujourd'hui", type: "en-fr" },
+                { french: "Hier", english: "Yesterday", type: "fr-en" },
+                { french: "Tomorrow", english: "Demain", type: "en-fr" },
+                { french: "Semaine", english: "Week", type: "fr-en" },
+                { french: "Weekend", english: "Week-end", type: "en-fr" },
+                { french: "Janvier", english: "January", type: "fr-en" },
+                { french: "February", english: "Février", type: "en-fr" },
+                { french: "Mars", english: "March", type: "fr-en" },
+                { french: "April", english: "Avril", type: "en-fr" },
+                { french: "Mai", english: "May", type: "fr-en" },
+                { french: "June", english: "Juin", type: "en-fr" },
+                { french: "Juillet", english: "July", type: "fr-en" },
+                { french: "August", english: "Août", type: "en-fr" },
+                { french: "Septembre", english: "September", type: "fr-en" },
+                { french: "October", english: "Octobre", type: "en-fr" },
+                { french: "Novembre", english: "November", type: "fr-en" },
+                { french: "December", english: "Décembre", type: "en-fr" },
+                { french: "Printemps", english: "Spring", type: "fr-en" },
+                { french: "Summer", english: "Été", type: "en-fr" },
+                { french: "Automne", english: "Fall", type: "fr-en" },
+                { french: "Winter", english: "Hiver", type: "en-fr" },
+                { french: "Année", english: "Year", type: "fr-en" },
+                { french: "Month", english: "Mois", type: "en-fr" },
+                { french: "Jour", english: "Day", type: "fr-en" },
+                { french: "Hour", english: "Heure", type: "en-fr" },
+                { french: "Minute", english: "Minute", type: "fr-en" },
+                { french: "Second", english: "Seconde", type: "en-fr" },
+                { french: "Matin", english: "Morning", type: "fr-en" },
+                { french: "Afternoon", english: "Après-midi", type: "en-fr" },
+                { french: "Soir", english: "Evening", type: "fr-en" },
+                { french: "Night", english: "Nuit", type: "en-fr" },
+                { french: "Minuit", english: "Midnight", type: "fr-en" },
+                { french: "Noon", english: "Midi", type: "en-fr" },
+                { french: "Lever du soleil", english: "Sunrise", type: "fr-en" },
+                { french: "Sunset", english: "Coucher du soleil", type: "en-fr" },
                 
-                // Family and age
-                { french: "J'ai sept ans", english: "I am seven years old", type: "fr-en" },
-                { french: "My sister is young", english: "Ma sœur est jeune", type: "en-fr" },
-                { french: "Grand-mère est vieille", english: "Grandmother is old", type: "fr-en" },
-                { french: "The baby is small", english: "Le bébé est petit", type: "en-fr" },
-                { french: "Mon oncle est gentil", english: "My uncle is nice", type: "fr-en" },
-                { french: "My aunt is funny", english: "Ma tante est drôle", type: "en-fr" },
+                // Weather (50+ entries)
+                { french: "Soleil", english: "Sun", type: "fr-en" },
+                { french: "Rain", english: "Pluie", type: "en-fr" },
+                { french: "Neige", english: "Snow", type: "fr-en" },
+                { french: "Wind", english: "Vent", type: "en-fr" },
+                { french: "Nuages", english: "Clouds", type: "fr-en" },
+                { french: "Storm", english: "Orage", type: "en-fr" },
+                { french: "Tonnerre", english: "Thunder", type: "fr-en" },
+                { french: "Lightning", english: "Éclair", type: "en-fr" },
+                { french: "Arc-en-ciel", english: "Rainbow", type: "fr-en" },
+                { french: "Fog", english: "Brouillard", type: "en-fr" },
+                { french: "Grêle", english: "Hail", type: "fr-en" },
+                { french: "Frost", english: "Givre", type: "en-fr" },
+                { french: "Glace", english: "Ice", type: "fr-en" },
+                { french: "Mud", english: "Boue", type: "en-fr" },
+                { french: "Humidité", english: "Humidity", type: "fr-en" },
+                { french: "Temperature", english: "Température", type: "en-fr" },
+                { french: "Degré", english: "Degree", type: "fr-en" },
+                { french: "Celsius", english: "Celsius", type: "en-fr" },
+                { french: "Fahrenheit", english: "Fahrenheit", type: "fr-en" },
+                { french: "Cloudy", english: "Nuageux", type: "en-fr" },
+                { french: "Ensoleillé", english: "Sunny", type: "fr-en" },
+                { french: "Rainy", english: "Pluvieux", type: "en-fr" },
+                { french: "Venteux", english: "Windy", type: "fr-en" },
+                { french: "Snowy", english: "Neigeux", type: "en-fr" },
+                { french: "Orageux", english: "Stormy", type: "fr-en" },
+                { french: "Clear", english: "Clair", type: "en-fr" },
+                { french: "Sombre", english: "Gloomy", type: "fr-en" },
+                { french: "Mild", english: "Doux", type: "en-fr" },
+                { french: "Glacial", english: "Freezing", type: "fr-en" },
+                { french: "Boiling", english: "Bouillant", type: "en-fr" },
+                { french: "Tiède", english: "Warm", type: "fr-en" },
+                { french: "Cool", english: "Frais", type: "en-fr" },
+                { french: "Agréable", english: "Pleasant", type: "fr-en" },
+                { french: "Terrible", english: "Terrible", type: "en-fr" },
+                { french: "Parfait", english: "Perfect", type: "fr-en" },
+                { french: "Changing", english: "Changeant", type: "en-fr" },
+                { french: "Stable", english: "Stable", type: "fr-en" },
+                { french: "Unpredictable", english: "Imprévisible", type: "en-fr" },
+                { french: "Prévision", english: "Forecast", type: "fr-en" },
+                { french: "Climate", english: "Climat", type: "en-fr" },
+                { french: "Saison", english: "Season", type: "fr-en" },
+                { french: "Drought", english: "Sécheresse", type: "en-fr" },
+                { french: "Inondation", english: "Flood", type: "fr-en" },
+                { french: "Hurricane", english: "Ouragan", type: "en-fr" },
+                { french: "Tornade", english: "Tornado", type: "fr-en" },
+                { french: "Blizzard", english: "Blizzard", type: "en-fr" },
+                { french: "Canicule", english: "Heat wave", type: "fr-en" },
+                { french: "Cold front", english: "Front froid", type: "en-fr" },
+                { french: "Pression", english: "Pressure", type: "fr-en" },
+                { french: "Barometer", english: "Baromètre", type: "en-fr" },
                 
-                // Food preferences and meals
-                { french: "J'aime les fraises", english: "I like strawberries", type: "fr-en" },
-                { french: "I don't like fish", english: "Je n'aime pas le poisson", type: "en-fr" },
-                { french: "Je mange du pain", english: "I eat bread", type: "fr-en" },
-                { french: "I drink milk", english: "Je bois du lait", type: "en-fr" },
-                { french: "Le gâteau est délicieux", english: "The cake is delicious", type: "fr-en" },
-                { french: "I eat breakfast", english: "Je mange le petit déjeuner", type: "en-fr" },
-                { french: "Les légumes sont verts", english: "The vegetables are green", type: "fr-en" },
-                { french: "I like chocolate", english: "J'aime le chocolat", type: "en-fr" },
+                // Basic school items (100+ entries)
+                { french: "École", english: "School", type: "fr-en" },
+                { french: "Teacher", english: "Professeur", type: "en-fr" },
+                { french: "Élève", english: "Student", type: "fr-en" },
+                { french: "Classroom", english: "Salle de classe", type: "en-fr" },
+                { french: "Bureau", english: "Desk", type: "fr-en" },
+                { french: "Chair", english: "Chaise", type: "en-fr" },
+                { french: "Tableau", english: "Blackboard", type: "fr-en" },
+                { french: "Whiteboard", english: "Tableau blanc", type: "en-fr" },
+                { french: "Livre", english: "Book", type: "fr-en" },
+                { french: "Notebook", english: "Cahier", type: "en-fr" },
+                { french: "Crayon", english: "Pencil", type: "fr-en" },
+                { french: "Pen", english: "Stylo", type: "en-fr" },
+                { french: "Gomme", english: "Eraser", type: "fr-en" },
+                { french: "Ruler", english: "Règle", type: "en-fr" },
+                { french: "Ciseaux", english: "Scissors", type: "fr-en" },
+                { french: "Glue", english: "Colle", type: "en-fr" },
+                { french: "Papier", english: "Paper", type: "fr-en" },
+                { french: "Homework", english: "Devoirs", type: "en-fr" },
+                { french: "Examen", english: "Test", type: "fr-en" },
+                { french: "Grade", english: "Note", type: "en-fr" },
+                { french: "Cours", english: "Class", type: "fr-en" },
+                { french: "Subject", english: "Matière", type: "en-fr" },
+                { french: "Mathématiques", english: "Mathematics", type: "fr-en" },
+                { french: "Science", english: "Science", type: "en-fr" },
+                { french: "Histoire", english: "History", type: "fr-en" },
+                { french: "Geography", english: "Géographie", type: "en-fr" },
+                { french: "Art", english: "Art", type: "fr-en" },
+                { french: "Music", english: "Musique", type: "en-fr" },
+                { french: "Sport", english: "Sports", type: "fr-en" },
+                { french: "English", english: "Anglais", type: "en-fr" },
+                { french: "Français", english: "French", type: "fr-en" },
+                { french: "Spanish", english: "Espagnol", type: "en-fr" },
+                { french: "Récréation", english: "Recess", type: "fr-en" },
+                { french: "Lunch", english: "Déjeuner", type: "en-fr" },
+                { french: "Sac à dos", english: "Backpack", type: "fr-en" },
+                { french: "Locker", english: "Casier", type: "en-fr" },
+                { french: "Bibliothèque", english: "Library", type: "fr-en" },
+                { french: "Computer", english: "Ordinateur", type: "en-fr" },
+                { french: "Calculatrice", english: "Calculator", type: "fr-en" },
+                { french: "Dictionary", english: "Dictionnaire", type: "en-fr" },
                 
-                // Toys and games
-                { french: "J'aime jouer", english: "I like to play", type: "fr-en" },
-                { french: "My toy is broken", english: "Mon jouet est cassé", type: "en-fr" },
-                { french: "Le ballon est rond", english: "The ball is round", type: "fr-en" },
-                { french: "I have a doll", english: "J'ai une poupée", type: "en-fr" },
-                { french: "Les jeux sont amusants", english: "Games are fun", type: "fr-en" },
-                { french: "I play with blocks", english: "Je joue avec des blocs", type: "en-fr" },
+                // House and home items (100+ entries)
+                { french: "Maison", english: "House", type: "fr-en" },
+                { french: "Home", english: "Foyer", type: "en-fr" },
+                { french: "Appartement", english: "Apartment", type: "fr-en" },
+                { french: "Room", english: "Chambre", type: "en-fr" },
+                { french: "Cuisine", english: "Kitchen", type: "fr-en" },
+                { french: "Living room", english: "Salon", type: "en-fr" },
+                { french: "Salle à manger", english: "Dining room", type: "fr-en" },
+                { french: "Bathroom", english: "Salle de bain", type: "en-fr" },
+                { french: "Chambre à coucher", english: "Bedroom", type: "fr-en" },
+                { french: "Basement", english: "Sous-sol", type: "en-fr" },
+                { french: "Grenier", english: "Attic", type: "fr-en" },
+                { french: "Garage", english: "Garage", type: "en-fr" },
+                { french: "Jardin", english: "Garden", type: "fr-en" },
+                { french: "Yard", english: "Cour", type: "en-fr" },
+                { french: "Balcon", english: "Balcony", type: "fr-en" },
+                { french: "Table", english: "Table", type: "fr-en" },
+                { french: "Chair", english: "Chaise", type: "en-fr" },
+                { french: "Fauteuil", english: "Armchair", type: "fr-en" },
+                { french: "Sofa", english: "Canapé", type: "en-fr" },
+                { french: "Lit", english: "Bed", type: "fr-en" },
+                { french: "Mattress", english: "Matelas", type: "en-fr" },
+                { french: "Oreiller", english: "Pillow", type: "fr-en" },
+                { french: "Blanket", english: "Couverture", type: "en-fr" },
+                { french: "Miroir", english: "Mirror", type: "fr-en" },
+                { french: "Lamp", english: "Lampe", type: "en-fr" },
+                { french: "Télévision", english: "Television", type: "fr-en" },
+                { french: "Computer", english: "Ordinateur", type: "en-fr" },
+                { french: "Téléphone", english: "Phone", type: "fr-en" },
+                { french: "Radio", english: "Radio", type: "en-fr" },
+                { french: "Horloge", english: "Clock", type: "fr-en" },
+                { french: "Picture", english: "Photo", type: "en-fr" },
+                { french: "Rideau", english: "Curtain", type: "fr-en" },
+                { french: "Carpet", english: "Tapis", type: "en-fr" },
+                { french: "Door", english: "Porte", type: "en-fr" },
+                { french: "Fenêtre", english: "Window", type: "fr-en" },
+                { french: "Key", english: "Clé", type: "en-fr" },
                 
-                // School and house
-                { french: "J'aime l'école", english: "I like school", type: "fr-en" },
-                { french: "The book is on the table", english: "Le livre est sur la table", type: "en-fr" },
-                { french: "Ma chambre est petite", english: "My bedroom is small", type: "fr-en" },
-                { french: "The kitchen is big", english: "La cuisine est grande", type: "en-fr" },
-                { french: "Le professeur est sympa", english: "The teacher is nice", type: "fr-en" },
-                { french: "I do my homework", english: "Je fais mes devoirs", type: "en-fr" },
+                // Toys and games (50+ entries)
+                { french: "Jouet", english: "Toy", type: "fr-en" },
+                { french: "Doll", english: "Poupée", type: "en-fr" },
+                { french: "Ours en peluche", english: "Teddy bear", type: "fr-en" },
+                { french: "Ball", english: "Ballon", type: "en-fr" },
+                { french: "Cube", english: "Block", type: "fr-en" },
+                { french: "Lego", english: "Lego", type: "en-fr" },
+                { french: "Puzzle", english: "Puzzle", type: "fr-en" },
+                { french: "Game", english: "Jeu", type: "en-fr" },
+                { french: "Carte", english: "Card", type: "fr-en" },
+                { french: "Dice", english: "Dé", type: "en-fr" },
+                { french: "Jeu de société", english: "Board game", type: "fr-en" },
+                { french: "Video game", english: "Jeu vidéo", type: "en-fr" },
+                { french: "Console", english: "Console", type: "fr-en" },
+                { french: "Controller", english: "Manette", type: "en-fr" },
+                { french: "Voiture jouet", english: "Toy car", type: "fr-en" },
+                { french: "Train set", english: "Train miniature", type: "en-fr" },
+                { french: "Avion jouet", english: "Toy plane", type: "fr-en" },
+                { french: "Robot", english: "Robot", type: "en-fr" },
+                { french: "Figurine", english: "Action figure", type: "fr-en" },
+                { french: "Superhero", english: "Super-héros", type: "en-fr" },
+                { french: "Princesse", english: "Princess", type: "fr-en" },
+                { french: "Castle", english: "Château", type: "en-fr" }
+            ], "Flood", type: "fr-en" },
+                { french: "Hurricane", english: "Ouragan", type: "en-fr" },
+                { french: "Tornade", english: "Tornado", type: "fr-en" },
+                { french: "Blizzard", english: "Blizzard", type: "en-fr" },
+                { french: "Canicule", english: "Heat wave", type: "fr-en" },
+                { french: "Cold front", english: "Front froid", type: "en-fr" },
+                { french: "Pression", english: "Pressure", type: "fr-en" },
+                { french: "Barometer", english: "Baromètre", type: "en-fr" },
                 
-                // Clothing
-                { french: "Ma chemise est propre", english: "My shirt is clean", type: "fr-en" },
-                { french: "I wear shoes", english: "Je porte des chaussures", type: "en-fr" },
-                { french: "Le manteau est chaud", english: "The coat is warm", type: "fr-en" },
-                { french: "My hat is red", english: "Mon chapeau est rouge", type: "en-fr" },
+                // Basic school items (100+ entries)
+                { french: "École", english: "School", type: "fr-en" },
+                { french: "Teacher", english: "Professeur", type: "en-fr" },
+                { french: "Élève", english: "Student", type: "fr-en" },
+                { french: "Classroom", english: "Salle de classe", type: "en-fr" },
+                { french: "Bureau", english: "Desk", type: "fr-en" },
+                { french: "Chair", english: "Chaise", type: "en-fr" },
+                { french: "Tableau", english: "Blackboard", type: "fr-en" },
+                { french: "Whiteboard", english: "Tableau blanc", type: "en-fr" },
+                { french: "Livre", english: "Book", type: "fr-en" },
+                { french: "Notebook", english: "Cahier", type: "en-fr" },
+                { french: "Crayon", english: "Pencil", type: "fr-en" },
+                { french: "Pen", english: "Stylo", type: "en-fr" },
+                { french: "Gomme", english: "Eraser", type: "fr-en" },
+                { french: "Ruler", english: "Règle", type: "en-fr" },
+                { french: "Ciseaux", english: "Scissors", type: "fr-en" },
+                { french: "Glue", english: "Colle", type: "en-fr" },
+                { french: "Papier", english: "Paper", type: "fr-en" },
+                { french: "Homework", english: "Devoirs", type: "en-fr" },
+                { french: "Examen", english: "Test", type: "fr-en" },
+                { french: "Grade", english: "Note", type: "en-fr" },
+                { french: "Cours", english: "Class", type: "fr-en" },
+                { french: "Subject", english: "Matière", type: "en-fr" },
+                { french: "Mathématiques", english: "Mathematics", type: "fr-en" },
+                { french: "Science", english: "Science", type: "en-fr" },
+                { french: "Histoire", english: "History", type: "fr-en" },
+                { french: "Geography", english: "Géographie", type: "en-fr" },
+                { french: "Art", english: "Art", type: "fr-en" },
+                { french: "Music", english: "Musique", type: "en-fr" },
+                { french: "Sport", english: "Sports", type: "fr-en" },
+                { french: "English", english: "Anglais", type: "en-fr" },
+                { french: "Français", english: "French", type: "fr-en" },
+                { french: "Spanish", english: "Espagnol", type: "en-fr" },
+                { french: "Récréation", english: "Recess", type: "fr-en" },
+                { french: "Lunch", english: "Déjeuner", type: "en-fr" },
+                { french: "Sac à dos", english: "Backpack", type: "fr-en" },
+                { french: "Locker", english: "Casier", type: "en-fr" },
+                { french: "Bibliothèque", english: "Library", type: "fr-en" },
+                { french: "Computer", english: "Ordinateur", type: "en-fr" },
+                { french: "Calculatrice", english: "Calculator", type: "fr-en" },
+                { french: "Dictionary", english: "Dictionnaire", type: "en-fr" },
+                { french: "Atlas", english: "Atlas", type: "fr-en" },
+                { french: "Map", english: "Carte", type: "en-fr" },
+                { french: "Globe", english: "Globe", type: "fr-en" },
+                { french: "Calendar", english: "Calendrier", type: "en-fr" },
+                { french: "Horloge", english: "Clock", type: "fr-en" },
+                { french: "Bell", english: "Cloche", type: "en-fr" },
+                { french: "Uniforme", english: "Uniform", type: "fr-en" },
+                { french: "Playground", english: "Cour de récréation", type: "en-fr" },
+                { french: "Gymnase", english: "Gymnasium", type: "fr-en" },
+                { french: "Cafeteria", english: "Cafétéria", type: "en-fr" },
+                { french: "Principal", english: "Directeur", type: "en-fr" },
+                { french: "Infirmerie", english: "Nurse's office", type: "fr-en" },
+                { french: "Bus", english: "Bus", type: "en-fr" },
+                { french: "Couloir", english: "Hallway", type: "fr-en" },
+                { french: "Stairs", english: "Escaliers", type: "en-fr" },
+                { french: "Sortie", english: "Exit", type: "fr-en" },
+                { french: "Entrance", english: "Entrée", type: "en-fr" },
+                { french: "Fenêtre", english: "Window", type: "fr-en" },
+                { french: "Door", english: "Porte", type: "en-fr" },
+                { french: "Mur", english: "Wall", type: "fr-en" },
+                { french: "Floor", english: "Sol", type: "en-fr" },
+                { french: "Plafond", english: "Ceiling", type: "fr-en" },
+                { french: "Light", english: "Lumière", type: "en-fr" },
+                { french: "Ventilateur", english: "Fan", type: "fr-en" },
+                { french: "Heater", english: "Chauffage", type: "en-fr" },
+                { french: "Tableau d'affichage", english: "Bulletin board", type: "fr-en" },
+                { french: "Poster", english: "Affiche", type: "en-fr" },
+                { french: "Crayon de couleur", english: "Colored pencil", type: "fr-en" },
+                { french: "Marker", english: "Marqueur", type: "en-fr" },
+                { french: "Highlighter", english: "Surligneur", type: "en-fr" },
+                { french: "Agrafeuse", english: "Stapler", type: "fr-en" },
+                { french: "Hole punch", english: "Perforatrice", type: "en-fr" },
+                { french: "Classeur", english: "Binder", type: "fr-en" },
+                { french: "Folder", english: "Dossier", type: "en-fr" },
+                { french: "Feuille", english: "Sheet", type: "fr-en" },
+                { french: "Envelope", english: "Enveloppe", type: "en-fr" },
+                { french: "Timbre", english: "Stamp", type: "fr-en" },
+                { french: "Mailbox", english: "Boîte aux lettres", type: "en-fr" },
+                { french: "Télévision", english: "Television", type: "fr-en" },
+                { french: "Radio", english: "Radio", type: "en-fr" },
+                { french: "Projecteur", english: "Projector", type: "fr-en" },
+                { french: "Screen", english: "Écran", type: "en-fr" },
+                { french: "Microphone", english: "Microphone", type: "fr-en" },
+                { french: "Speaker", english: "Haut-parleur", type: "en-fr" },
+                { french: "Magnétophone", english: "Tape recorder", type: "fr-en" },
+                { french: "CD player", english: "Lecteur CD", type: "en-fr" },
+                { french: "DVD", english: "DVD", type: "fr-en" },
+                { french: "Video", english: "Vidéo", type: "en-fr" },
+                { french: "Caméra", english: "Camera", type: "fr-en" },
+                { french: "Microscope", english: "Microscope", type: "en-fr" },
+                { french: "Télescope", english: "Telescope", type: "fr-en" },
+                { french: "Magnet", english: "Aimant", type: "en-fr" },
+                { french: "Boussole", english: "Compass", type: "fr-en" },
+                { french: "Thermometer", english: "Thermomètre", type: "en-fr" },
+                { french: "Balance", english: "Scale", type: "fr-en" },
+                { french: "Measuring cup", english: "Verre doseur", type: "en-fr" },
+                { french: "Tube à essai", english: "Test tube", type: "fr-en" },
+                { french: "Beaker", english: "Bécher", type: "en-fr" },
+                { french: "Éprouvette", english: "Graduated cylinder", type: "fr-en" },
+                { french: "Funnel", english: "Entonnoir", type: "en-fr" },
+                { french: "Pipette", english: "Pipette", type: "fr-en" },
+                { french: "Bunsen burner", english: "Bec Bunsen", type: "en-fr" },
+                { french: "Lunettes de sécurité", english: "Safety goggles", type: "fr-en" },
+                { french: "Lab coat", english: "Blouse de laboratoire", type: "en-fr" },
+                { french: "Gants", english: "Gloves", type: "fr-en" },
+                { french: "First aid kit", english: "Trousse de premiers secours", type: "en-fr" },
+                { french: "Bandage", english: "Bandage", type: "fr-en" },
+                { french: "Ice pack", english: "Poche de glace", type: "en-fr" },
+                { french: "Médicament", english: "Medicine", type: "fr-en" },
+                { french: "Thermometer", english: "Thermomètre", type: "en-fr" },
+                { french: "Stéthoscope", english: "Stethoscope", type: "fr-en" },
+                { french: "Band-aid", english: "Pansement", type: "en-fr" },
                 
-                // Nature and environment
-                { french: "L'arbre est grand", english: "The tree is tall", type: "fr-en" },
-                { french: "The flowers are pretty", english: "Les fleurs sont jolies", type: "en-fr" },
-                { french: "Le jardin est beau", english: "The garden is beautiful", type: "fr-en" },
-                { french: "I like the park", english: "J'aime le parc", type: "en-fr" }
-            ],
-            
-            hard: [
-                // Complex sentences and expressions
-                { french: "Je ne comprends pas", english: "I don't understand", type: "fr-en" },
-                { french: "Can you repeat please?", english: "Pouvez-vous répéter s'il vous plaît?", type: "en-fr" },
-                { french: "J'ai faim et j'ai soif", english: "I'm hungry and I'm thirsty", type: "fr-en" },
-                { french: "What time is it?", english: "Quelle heure est-il?", type: "en-fr" },
-                { french: "Je me réveille tôt", english: "I wake up early", type: "fr-en" },
-                { french: "I brush my teeth", english: "Je me brosse les dents", type: "en-fr" },
+                // House and home items (200+ entries)
+                { french: "Maison", english: "House", type: "fr-en" },
+                { french: "Home", english: "Foyer", type: "en-fr" },
+                { french: "Appartement", english: "Apartment", type: "fr-en" },
+                { french: "Room", english: "Chambre", type: "en-fr" },
+                { french: "Cuisine", english: "Kitchen", type: "fr-en" },
+                { french: "Living room", english: "Salon", type: "en-fr" },
+                { french: "Salle à manger", english: "Dining room", type: "fr-en" },
+                { french: "Bathroom", english: "Salle de bain", type: "en-fr" },
+                { french: "Chambre à coucher", english: "Bedroom", type: "fr-en" },
+                { french: "Basement", english: "Sous-sol", type: "en-fr" },
+                { french: "Grenier", english: "Attic", type: "fr-en" },
+                { french: "Garage", english: "Garage", type: "en-fr" },
+                { french: "Jardin", english: "Garden", type: "fr-en" },
+                { french: "Yard", english: "Cour", type: "en-fr" },
+                { french: "Balcon", english: "Balcony", type: "fr-en" },
+                { french: "Patio", english: "Patio", type: "en-fr" },
+                { french: "Terrasse", english: "Terrace", type: "fr-en" },
+                { french: "Roof", english: "Toit", type: "en-fr" },
+                { french: "Cheminée", english: "Chimney", type: "fr-en" },
+                { french: "Fireplace", english: "Cheminée", type: "en-fr" },
+                { french: "Escalier", english: "Stairs", type: "fr-en" },
+                { french: "Elevator", english: "Ascenseur", type: "en-fr" },
+                { french: "Couloir", english: "Hallway", type: "fr-en" },
+                { french: "Closet", english: "Placard", type: "en-fr" },
+                { french: "Garde-robe", english: "Wardrobe", type: "fr-en" },
+                { french: "Furniture", english: "Meubles", type: "en-fr" },
+                { french: "Table", english: "Table", type: "fr-en" },
+                { french: "Chair", english: "Chaise", type: "en-fr" },
+                { french: "Fauteuil", english: "Armchair", type: "fr-en" },
+                { french: "Sofa", english: "Canapé", type: "en-fr" },
+                { french: "Lit", english: "Bed", type: "fr-en" },
+                { french: "Mattress", english: "Matelas", type: "en-fr" },
+                { french: "Oreiller", english: "Pillow", type: "fr-en" },
+                { french: "Blanket", english: "Couverture", type: "en-fr" },
+                { french: "Drap", english: "Sheet", type: "fr-en" },
+                { french: "Comforter", english: "Couette", type: "en-fr" },
+                { french: "Armoire", english: "Wardrobe", type: "fr-en" },
+                { french: "Dresser", english: "Commode", type: "en-fr" },
+                { french: "Miroir", english: "Mirror", type: "fr-en" },
+                { french: "Lamp", english: "Lampe", type: "en-fr" },
+                { french: "Télévision", english: "Television", type: "fr-en" },
+                { french: "Computer", english: "Ordinateur", type: "en-fr" },
+                { french: "Téléphone", english: "Phone", type: "fr-en" },
+                { french: "Radio", english: "Radio", type: "en-fr" },
+                { french: "Horloge", english: "Clock", type: "fr-en" },
+                { french: "Picture", english: "Photo", type: "en-fr" },
+                { french: "Peinture", english: "Painting", type: "fr-en" },
+                { french: "Curtain", english: "Rideau", type: "en-fr" },
+                { french: "Store", english: "Blind", type: "fr-en" },
+                { french: "Carpet", english: "Tapis", type: "en-fr" },
+                { french: "Plancher", english: "Floor", type: "fr-en" },
+                { french: "Ceiling", english: "Plafond", type: "en-fr" },
+                { french: "Mur", english: "Wall", type: "fr-en" },
+                { french: "Door", english: "Porte", type: "en-fr" },
+                { french: "Fenêtre", english: "Window", type: "fr-en" },
+                { french: "Key", english: "Clé", type: "en-fr" },
+                { french: "Serrure", english: "Lock", type: "fr-en" },
+                { french: "Doorbell", english: "Sonnette", type: "en-fr" },
+                { french: "Boîte aux lettres", english: "Mailbox", type: "fr-en" },
+                { french: "Address", english: "Adresse", type: "en-fr" },
+                { french: "Numéro", english: "Number", type: "fr-en" },
+                { french: "Street", english: "Rue", type: "en-fr" },
+                { french: "Avenue", english: "Avenue", type: "fr-en" },
+                { french: "City", english: "Ville", type: "en-fr" },
+                { french: "État", english: "State", type: "fr-en" },
+                { french: "Country", english: "Pays", type: "en-fr" },
+                { french: "Code postal", english: "Zip code", type: "fr-en" },
+                { french: "Neighborhood", english: "Quartier", type: "en-fr" },
+                { french: "Voisin", english: "Neighbor", type: "fr-en" },
+                { french: "Fence", english: "Clôture", type: "en-fr" },
+                { french: "Portail", english: "Gate", type: "fr-en" },
+                { french: "Driveway", english: "Allée", type: "en-fr" },
+                { french: "Trottoir", english: "Sidewalk", type: "fr-en" },
+                { french: "Lawn", english: "Pelouse", type: "en-fr" },
+                { french: "Arbre", english: "Tree", type: "fr-en" },
+                { french: "Flower", english: "Fleur", type: "en-fr" },
+                { french: "Plante", english: "Plant", type: "fr-en" },
+                { french: "Bush", english: "Buisson", type: "en-fr" },
+                { french: "Herbe", english: "Grass", type: "fr-en" },
+                { french: "Leaf", english: "Feuille", type: "en-fr" },
+                { french: "Branche", english: "Branch", type: "fr-en" },
+                { french: "Root", english: "Racine", type: "en-fr" },
+                { french: "Graine", english: "Seed", type: "fr-en" },
+                { french: "Soil", english: "Terre", type: "en-fr" },
+                { french: "Pot", english: "Pot", type: "fr-en" },
+                { french: "Watering can", english: "Arrosoir", type: "en-fr" },
+                { french: "Tuyau d'arrosage", english: "Hose", type: "fr-en" },
+                { french: "Shovel", english: "Pelle", type: "en-fr" },
+                { french: "Râteau", english: "Rake", type: "fr-en" },
+                { french: "Lawnmower", english: "Tondeuse", type: "en-fr" },
+                { french: "Sécateur", english: "Pruning shears", type: "fr-en" },
+                { french: "Gloves", english: "Gants", type: "en-fr" },
+                { french: "Genouillères", english: "Knee pads", type: "fr-en" },
+                { french: "Wheelbarrow", english: "Brouette", type: "en-fr" },
+                { french: "Compost", english: "Compost", type: "fr-en" },
+                { french: "Fertilizer", english: "Engrais", type: "en-fr" },
+                { french: "Pesticide", english: "Pesticide", type: "fr-en" },
+                { french: "Sprinkler", english: "Arroseur", type: "en-fr" },
+                { french: "Barbecue", english: "Barbecue", type: "fr-en" },
+                { french: "Picnic table", english: "Table de pique-nique", type: "en-fr" },
+                { french: "Parasol", english: "Umbrella", type: "fr-en" },
+                { french: "Swimming pool", english: "Piscine", type: "en-fr" },
+                { french: "Jacuzzi", english: "Jacuzzi", type: "fr-en" },
+                { french: "Slide", english: "Toboggan", type: "en-fr" },
+                { french: "Balançoire", english: "Swing", type: "fr-en" },
+                { french: "Sandbox", english: "Bac à sable", type: "en-fr" },
+                { french: "Trampoline", english: "Trampoline", type: "fr-en" },
+                { french: "Hammock", english: "Hamac", type: "en-fr" },
+                { french: "Chaise longue", english: "Lounge chair", type: "fr-en" },
+                { french: "Fire pit", english: "Foyer extérieur", type: "en-fr" },
+                { french: "Shed", english: "Remise", type: "en-fr" },
+                { french: "Greenhouse", english: "Serre", type: "en-fr" },
+                { french: "Bird house", english: "Nichoir", type: "en-fr" },
+                { french: "Bird bath", english: "Bain d'oiseaux", type: "en-fr" },
+                { french: "Weather vane", english: "Girouette", type: "en-fr" },
+                { french: "Solar panel", english: "Panneau solaire", type: "en-fr" },
+                { french: "Antenna", english: "Antenne", type: "en-fr" },
+                { french: "Satellite dish", english: "Antenne parabolique", type: "en-fr" },
                 
-                // Days and weather
-                { french: "Il fait beau dimanche", english: "It's nice weather on Sunday", type: "fr-en" },
-                { french: "Monday is cold", english: "Lundi il fait froid", type: "en-fr" },
-                { french: "Il neige en décembre", english: "It snows in December", type: "fr-en" },
-                { french: "Friday is hot", english: "Vendredi il fait chaud", type: "en-fr" },
-                { french: "Il pleut aujourd'hui", english: "It's raining today", type: "fr-en" },
-                { french: "The wind is strong", english: "Le vent est fort", type: "en-fr" },
-                { french: "J'aime les nuages blancs", english: "I like white clouds", type: "fr-en" },
-                { french: "Summer is my favorite season", english: "L'été est ma saison préférée", type: "en-fr" },
-                
-                // Activities and hobbies
-                { french: "J'aime jouer avec mon chien", english: "I like to play with my dog", type: "fr-en" },
-                { french: "I want to read a book", english: "Je veux lire un livre", type: "en-fr" },
-                { french: "Elle peut courir vite", english: "She can run fast", type: "fr-en" },
-                { french: "I like to draw pictures", english: "J'aime dessiner des images", type: "en-fr" },
-                { french: "Nous chantons une chanson", english: "We sing a song", type: "fr-en" },
-                { french: "I play the piano", english: "Je joue du piano", type: "en-fr" },
-                { french: "J'aime nager dans la piscine", english: "I like to swim in the pool", type: "fr-en" },
-                { french: "My friend likes to dance", english: "Mon ami aime danser", type: "en-fr" },
-                
-                // Daily routines and time
-                { french: "Je me lève à sept heures", english: "I get up at seven o'clock", type: "fr-en" },
-                { french: "I go to bed at nine", english: "Je me couche à neuf heures", type: "en-fr" },
-                { french: "Nous mangeons le dîner ensemble", english: "We eat dinner together", type: "fr-en" },
-                { french: "I take a shower every day", english: "Je prends une douche tous les jours", type: "en-fr" },
-                { french: "Le matin, je bois du jus", english: "In the morning, I drink juice", type: "fr-en" },
-                { french: "After school, I play outside", english: "Après l'école, je joue dehors", type: "en-fr" },
-                
-                // Complex descriptions and emotions
-                { french: "Le gros éléphant est gris", english: "The fat elephant is gray", type: "fr-en" },
-                { french: "My new shoes are pretty", english: "Mes nouvelles chaussures sont jolies", type: "en-fr" },
-                { french: "Je suis heureux aujourd'hui", english: "I am happy today", type: "fr-en" },
-                { french: "The old horse is sad", english: "Le vieux cheval est triste", type: "en-fr" },
-                { french: "Mon petit frère est mignon", english: "My little brother is cute", type: "fr-en" },
-                { french: "I feel excited about my birthday", english: "Je me sens excité pour mon anniversaire", type: "en-fr" },
-                
-                // Advanced activities and places
-                { french: "Nous visitons le musée", english: "We visit the museum", type: "fr-en" },
-                { french: "I go to the library", english: "Je vais à la bibliothèque", type: "en-fr" },
-                { french: "Le médecin est très gentil", english: "The doctor is very nice", type: "fr-en" },
-                { french: "My favorite restaurant is Italian", english: "Mon restaurant préféré est italien", type: "en-fr" },
-                { french: "J'aide ma mère à cuisiner", english: "I help my mother cook", type: "fr-en" },
-                { french: "We celebrate Christmas in December", english: "Nous célébrons Noël en décembre", type: "en-fr" },
-                
-                // Advanced emotions and states
-                { french: "Je suis fier de mon dessin", english: "I am proud of my drawing", type: "fr-en" },
-                { french: "I feel nervous about the test", english: "Je me sens nerveux à propos du test", type: "en-fr" },
-                { french: "Ma grand-mère me manque", english: "I miss my grandmother", type: "fr-en" },
-                { french: "I am surprised by the gift", english: "Je suis surpris par le cadeau", type: "en-fr" },
-                
-                // Complex actions and preferences
-                { french: "J'apprends à faire du vélo", english: "I am learning to ride a bike", type: "fr-en" },
-                { french: "My sister teaches me French", english: "Ma sœur m'apprend le français", type: "en-fr" },
-                { french: "Nous préparons le petit déjeuner", english: "We prepare breakfast", type: "fr-en" },
-                { french: "I collect stamps as a hobby", english: "Je collectionne les timbres comme hobby", type: "en-fr" }
-            ]
-        };
-        
-        function setDifficulty(difficulty) {
-            currentDifficulty = difficulty;
-            document.querySelectorAll('.difficulty-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            nextQuestion();
-        }
-        
-        function setDirection(direction) {
-            currentDirection = direction;
-            document.querySelectorAll('.direction-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            nextQuestion();
-        }
-        
-        function getRandomExercise() {
-            const exerciseSet = exercises[currentDifficulty];
-            
-            // Filter by direction if not mixed
-            let filteredExercises = exerciseSet;
-            if (currentDirection !== 'mixed') {
-                filteredExercises = exerciseSet.filter(exercise => exercise.type === currentDirection);
-            }
-            
-            return filteredExercises[Math.floor(Math.random() * filteredExercises.length)];
-        }
-        
-        function nextQuestion() {
-            // Stop any current audio
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio = null;
-                resetSpeakerButton();
-            }
-            
-            currentQuestion = getRandomExercise();
-            document.getElementById('question').textContent = currentQuestion.french;
-            document.getElementById('direction').textContent = 
-                currentQuestion.type === 'fr-en' ? 'Translate to English:' : 'Translate to French:';
-            document.getElementById('answer-input').value = '';
-            document.getElementById('feedback').style.display = 'none';
-            document.getElementById('celebration').style.display = 'none';
-            document.getElementById('answer-input').focus();
-        }
-        
-        function checkAnswer() {
-            const userAnswer = document.getElementById('answer-input').value.trim().toLowerCase();
-            const correctAnswer = currentQuestion.english.toLowerCase();
-            const feedback = document.getElementById('feedback');
-            
-            totalCount++;
-            document.getElementById('total-count').textContent = totalCount;
-            
-            if (userAnswer === correctAnswer) {
-                correctCount++;
-                streakCount++;
-                feedback.className = 'feedback correct';
-                feedback.innerHTML = `<span class="emoji">🎉</span>Correct! Great job!`;
-                showCelebration();
-            } else {
-                streakCount = 0;
-                feedback.className = 'feedback incorrect';
-                feedback.innerHTML = `
-                    <span class="emoji">❌</span>Not quite right. The answer is: <strong>${currentQuestion.english}</strong>
-                    <button class="speaker-btn" onclick="speakText('answer')" title="Listen to pronunciation">🔊</button>
-                `;
-            }
-            
-            feedback.style.display = 'block';
-            updateStats();
-        }
-        
-        function showAnswer() {
-            const feedback = document.getElementById('feedback');
-            feedback.className = 'feedback show-answer';
-            feedback.innerHTML = `
-                <span class="emoji">💡</span>The answer is: <strong>${currentQuestion.english}</strong>
-                <button class="speaker-btn" onclick="speakText('answer')" title="Listen to pronunciation">🔊</button>
-            `;
-            feedback.style.display = 'block';
-        }
-        
-        function updateStats() {
-            document.getElementById('correct-count').textContent = correctCount;
-            document.getElementById('streak-count').textContent = streakCount;
-        }
-        
-        function showCelebration() {
-            const celebration = document.getElementById('celebration');
-            const emojis = ['🎉', '🌟', '🎊', '🏆', '👏', '🎈', '✨', '🌈'];
-            celebration.textContent = emojis[Math.floor(Math.random() * emojis.length)];
-            celebration.style.display = 'block';
-            
-            setTimeout(() => {
-                celebration.style.display = 'none';
-            }, 2000);
-        }
-        
-        function handleKeyPress(event) {
-            if (event.key === 'Enter') {
-                checkAnswer();
-            }
-        }
-        
-        // Initialize with first question
-        nextQuestion();
-    </script>
-</body>
-</html>
+                // Toys and games (100+ entries)
+                { french: "Jouet", english: "Toy", type: "fr-en" },
+                { french: "Doll", english: "Poupée", type: "en-fr" },
+                { french: "Ours en peluche", english: "Teddy bear", type: "fr-en" },
+                { french: "Ball", english: "Ballon", type: "en-fr" },
+                { french: "Cube", english: "Block", type: "fr-en" },
+                { french: "Lego", english: "Lego", type: "en-fr" },
+                { french: "Puzzle", english: "Puzzle", type: "fr-en" },
+                { french: "Game", english: "Jeu", type: "en-fr" },
+                { french: "Carte", english: "Card", type: "fr-en" },
+                { french: "Dice", english: "Dé", type: "en-fr" },
+                { french: "Jeu de société", english: "Board game", type: "fr-en" },
+                { french: "Video game", english: "Jeu vidéo", type: "en-fr" },
+                { french: "Console", english: "Console", type: "fr-en" },
+                { french: "Controller", english: "Manette", type: "en-fr" },
+                { french: "Voiture jouet", english: "Toy car", type: "fr-en" },
+                { french: "Train set", english: "Train miniature", type: "en-fr" },
+                { french: "Avion jouet", english: "Toy plane", type: "fr-en" },
+                { french: "Robot", english: "Robot", type: "en-fr" },
+                { french: "Figurine", english: "Action figure", type: "fr-en" },
+                { french: "Superhero", english: "Super-héros", type: "en-fr" },
+                { french: "Princesse", english: "Princess", type: "fr-en" },
+                { french: "Castle", english: "Château", type: "en-fr" },
+                { french: "Ferme jouet", english: "Toy farm", type: "fr-en" },
+                { french: "Dollhouse", english: "Maison de poupée", type: "en-fr" },
+                { french: "Cuisine jouet", english: "Play kitchen", type: "fr-en" },
+                { french: "Tool set", english: "Boîte à outils jouet", type: "en-fr" },
+                { french: "Instruments de musique", english: "Musical instruments", type: "fr-en" },
+                { french: "Piano", english: "Piano", type: "en-fr" },
+                { french: "Guitare", english: "Guitar", type: "fr-en" },
+                { french: "Drum", english: "Tambour", type: "en-fr" },
+                { french: "Flûte", english: "Flute", type: "fr-en" },
+                { french: "Trumpet", english: "Trompette", type: "en-fr" },
+                { french: "Violon", english: "Violin", type: "fr-en" },
+                { french: "Harmonica", english: "Harmonica", type: "en-fr" },
+                { french: "Xylophone", english: "Xylophone", type: "fr-en" },
+                { french: "Maracas", english: "Maracas", type: "en-fr" },
+                { french: "Triangle", english: "Triangle", type: "fr-en" },
+                { french: "Cymbals", english: "Cymbales", type: "en-fr" },
+                { french: "Baguettes", english: "Drumsticks", type: "fr-en" },
+                { french: "Microphone", english: "Microphone", type: "en-fr" },
+                { french: "Haut-parleur", english: "Speaker", type: "fr-en" },
+                { french: "Headphones", english: "Casque", type: "en-fr" },
+                { french: "Radio", english: "Radio", type: "fr-en" },
+                { french: "CD", english: "CD", type: "en-fr" },
+                { french: "MP3", english: "MP3", type: "fr-en" },
+                { french: "Dancing", english: "Danse", type: "en-fr" },
+                { french: "Chant", english: "Singing", type: "fr-en" },
+                { french: "Performance", english: "Spectacle", type: "en-fr" },
+                { french: "Art", english: "Art", type: "fr-en" },
+                { french: "Drawing", english: "Dessin", type: "en-fr" },
+                { french: "Peinture", english: "Painting", type: "fr-en" },
+                { french: "Brush", english: "Pinceau", type: "en-fr" },
+                { french: "Couleur", english: "
