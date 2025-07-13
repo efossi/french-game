@@ -68,6 +68,27 @@
             font-size: 0.9em;
         }
         
+        .progress-container {
+            background: #e9ecef;
+            border-radius: 10px;
+            height: 20px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            background: linear-gradient(90deg, #4ecdc4, #44a08d);
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.8em;
+        }
+        
         .exercise-card {
             background: #fff;
             border: 3px solid #4ecdc4;
@@ -151,12 +172,6 @@
             font-style: italic;
         }
         
-        .progress-info {
-            font-size: 0.9em;
-            color: #888;
-            margin-bottom: 15px;
-        }
-        
         .input-container {
             margin-bottom: 20px;
         }
@@ -225,6 +240,19 @@
             transform: scale(1.05);
         }
         
+        .reset-btn {
+            background: #9c27b0;
+            color: white;
+            font-size: 1em;
+            padding: 8px 15px;
+            margin-top: 10px;
+        }
+        
+        .reset-btn:hover {
+            background: #7b1fa2;
+            transform: scale(1.05);
+        }
+        
         .feedback {
             margin-top: 20px;
             padding: 15px;
@@ -287,34 +315,15 @@
             display: none;
         }
         
-        .completion-message {
-            background: #d1ecf1;
-            border: 2px solid #bee5eb;
-            border-radius: 10px;
+        .no-more-questions {
+            background: #fff3cd;
+            color: #856404;
+            border: 2px solid #ffeaa7;
             padding: 20px;
-            margin: 20px 0;
+            border-radius: 15px;
             text-align: center;
+            margin: 20px 0;
             display: none;
-        }
-        
-        .completion-message h3 {
-            color: #0c5460;
-            margin-top: 0;
-        }
-        
-        .completion-message p {
-            color: #0c5460;
-            margin-bottom: 15px;
-        }
-        
-        .reset-btn {
-            background: #17a2b8;
-            color: white;
-        }
-        
-        .reset-btn:hover {
-            background: #138496;
-            transform: scale(1.05);
         }
     </style>
 </head>
@@ -343,11 +352,15 @@
             </div>
         </div>
         
+        <div class="progress-container">
+            <div class="progress-bar" id="progress-bar" style="width: 0%">0%</div>
+        </div>
+        
         <div class="difficulty-selector">
             <h3 style="color: #666; margin-bottom: 15px;">Choose Difficulty:</h3>
-            <button class="difficulty-btn active" onclick="setDifficulty('easy')">Easy</button>
-            <button class="difficulty-btn" onclick="setDifficulty('medium')">Medium</button>
-            <button class="difficulty-btn" onclick="setDifficulty('hard')">Hard</button>
+            <button class="difficulty-btn active" onclick="setDifficulty('easy')">Easy (500+ words)</button>
+            <button class="difficulty-btn" onclick="setDifficulty('medium')">Medium (300+ phrases)</button>
+            <button class="difficulty-btn" onclick="setDifficulty('hard')">Hard (200+ sentences)</button>
         </div>
         
         <div class="direction-selector">
@@ -357,14 +370,7 @@
             <button class="direction-btn" onclick="setDirection('en-fr')">🇺🇸 → 🇫🇷 English to French</button>
         </div>
         
-        <div class="completion-message" id="completion-message">
-            <h3>🎉 Congratulations!</h3>
-            <p>You've completed all exercises for this difficulty and direction!</p>
-            <button class="reset-btn" onclick="resetUsedExercises()">🔄 Start Over</button>
-            <button class="difficulty-btn" onclick="suggestNextLevel()">📈 Try Next Level</button>
-        </div>
-        
-        <div class="exercise-card">
+        <div class="exercise-card" id="exercise-card">
             <div class="question-container">
                 <div class="question" id="question"></div>
                 <button class="speaker-btn" id="speak-question" onclick="speakText('question')" title="Listen to pronunciation">
@@ -372,7 +378,6 @@
                 </button>
             </div>
             <div class="direction" id="direction"></div>
-            <div class="progress-info" id="progress-info"></div>
             <div class="input-container">
                 <input type="text" id="answer-input" placeholder="Type your answer here..." onkeypress="handleKeyPress(event)">
             </div>
@@ -381,7 +386,16 @@
                 <button class="show-answer-btn" onclick="showAnswer()">Show Answer</button>
                 <button class="next-btn" onclick="nextQuestion()">Next Question</button>
             </div>
+            <div class="buttons">
+                <button class="reset-btn" onclick="resetQuestions()">Reset Questions</button>
+            </div>
             <div class="feedback" id="feedback"></div>
+        </div>
+        
+        <div class="no-more-questions" id="no-more-questions">
+            <h3>🎉 Congratulations! 🎉</h3>
+            <p>You've completed all questions in this difficulty level!</p>
+            <button class="reset-btn" onclick="resetQuestions()">Start Over</button>
         </div>
         
         <div class="celebration" id="celebration"></div>
@@ -396,7 +410,13 @@
         let currentDirection = 'mixed';
         let currentAudio = null;
         let isSpeaking = false;
-        let usedExercises = new Set();
+        
+        // Track used questions to prevent repetition
+        let usedQuestions = {
+            easy: [],
+            medium: [],
+            hard: []
+        };
         
         function speakText(source) {
             // Stop any current audio
@@ -505,26 +525,63 @@
             currentAudio = null;
         }
         
-        // Massive exercise database with 1000s of entries
+        // Massive exercise database with 1000+ entries
         const exercises = {
             easy: [
-                // Basic greetings and simple phrases (150+ entries)
+                // Basic greetings and politeness (50 entries)
                 { french: "Bonjour", english: "Hello", type: "fr-en" },
-                { french: "Good morning", english: "Bonjour", type: "en-fr" },
+                { french: "Good morning", english: "Bon matin", type: "en-fr" },
                 { french: "Bonsoir", english: "Good evening", type: "fr-en" },
                 { french: "Good night", english: "Bonne nuit", type: "en-fr" },
                 { french: "Salut", english: "Hi", type: "fr-en" },
                 { french: "Goodbye", english: "Au revoir", type: "en-fr" },
-                { french: "Merci", english: "Thank you", type: "fr-en" },
+                { french: "À bientôt", english: "See you soon", type: "fr-en" },
                 { french: "Please", english: "S'il vous plaît", type: "en-fr" },
+                { french: "Merci", english: "Thank you", type: "fr-en" },
+                { french: "You're welcome", english: "De rien", type: "en-fr" },
                 { french: "Excusez-moi", english: "Excuse me", type: "fr-en" },
                 { french: "Sorry", english: "Désolé", type: "en-fr" },
-                { french: "Oui", english: "Yes", type: "fr-en" },
-                { french: "No", english: "Non", type: "en-fr" },
-                { french: "Peut-être", english: "Maybe", type: "fr-en" },
-                { french: "Of course", english: "Bien sûr", type: "en-fr" },
-                
-                // Numbers 1-100 (100+ entries)
+                { french: "Pardon", english: "Pardon", type: "fr-en" },
+                { french: "Yes", english: "Oui", type: "en-fr" },
+                { french: "Non", english: "No", type: "fr-en" },
+                { french: "Maybe", english: "Peut-être", type: "en-fr" },
+                { french: "Bien sûr", english: "Of course", type: "fr-en" },
+                { french: "Welcome", english: "Bienvenue", type: "en-fr" },
+                { french: "Félicitations", english: "Congratulations", type: "fr-en" },
+                { french: "Good luck", english: "Bonne chance", type: "en-fr" },
+                { french: "Santé", english: "Cheers", type: "fr-en" },
+                { french: "Happy birthday", english: "Joyeux anniversaire", type: "en-fr" },
+                { french: "Joyeux Noël", english: "Merry Christmas", type: "fr-en" },
+                { french: "Happy New Year", english: "Bonne année", type: "en-fr" },
+                { french: "Bon voyage", english: "Have a good trip", type: "fr-en" },
+                { french: "Take care", english: "Prends soin de toi", type: "en-fr" },
+                { french: "À plus tard", english: "See you later", type: "fr-en" },
+                { french: "Nice to meet you", english: "Enchanté", type: "en-fr" },
+                { french: "Comment allez-vous", english: "How are you", type: "fr-en" },
+                { french: "I'm fine", english: "Ça va bien", type: "en-fr" },
+                { french: "Ça va", english: "I'm okay", type: "fr-en" },
+                { french: "What's your name", english: "Comment vous appelez-vous", type: "en-fr" },
+                { french: "Je m'appelle", english: "My name is", type: "fr-en" },
+                { french: "Where are you from", english: "D'où venez-vous", type: "en-fr" },
+                { french: "Je viens de", english: "I come from", type: "fr-en" },
+                { french: "How old are you", english: "Quel âge avez-vous", type: "en-fr" },
+                { french: "J'ai", english: "I have", type: "fr-en" },
+                { french: "I am", english: "Je suis", type: "en-fr" },
+                { french: "Vous êtes", english: "You are", type: "fr-en" },
+                { french: "He is", english: "Il est", type: "en-fr" },
+                { french: "Elle est", english: "She is", type: "fr-en" },
+                { french: "We are", english: "Nous sommes", type: "en-fr" },
+                { french: "Ils sont", english: "They are", type: "fr-en" },
+                { french: "What", english: "Quoi", type: "en-fr" },
+                { french: "Qui", english: "Who", type: "fr-en" },
+                { french: "When", english: "Quand", type: "en-fr" },
+                { french: "Où", english: "Where", type: "fr-en" },
+                { french: "Why", english: "Pourquoi", type: "en-fr" },
+                { french: "Comment", english: "How", type: "fr-en" },
+                { french: "How much", english: "Combien", type: "en-fr" },
+                { french: "Quoi", english: "What", type: "fr-en" },
+
+                // Numbers 1-100 (50 entries)
                 { french: "Un", english: "One", type: "fr-en" },
                 { french: "Two", english: "Deux", type: "en-fr" },
                 { french: "Trois", english: "Three", type: "fr-en" },
@@ -545,16 +602,39 @@
                 { french: "Eighteen", english: "Dix-huit", type: "en-fr" },
                 { french: "Dix-neuf", english: "Nineteen", type: "fr-en" },
                 { french: "Twenty", english: "Vingt", type: "en-fr" },
-                { french: "Trente", english: "Thirty", type: "fr-en" },
-                { french: "Forty", english: "Quarante", type: "en-fr" },
-                { french: "Cinquante", english: "Fifty", type: "fr-en" },
-                { french: "Sixty", english: "Soixante", type: "en-fr" },
-                { french: "Soixante-dix", english: "Seventy", type: "fr-en" },
-                { french: "Eighty", english: "Quatre-vingts", type: "en-fr" },
-                { french: "Quatre-vingt-dix", english: "Ninety", type: "fr-en" },
-                { french: "One hundred", english: "Cent", type: "en-fr" },
-                
-                // Colors (50+ entries)
+                { french: "Vingt et un", english: "Twenty-one", type: "fr-en" },
+                { french: "Thirty", english: "Trente", type: "en-fr" },
+                { french: "Quarante", english: "Forty", type: "fr-en" },
+                { french: "Fifty", english: "Cinquante", type: "en-fr" },
+                { french: "Soixante", english: "Sixty", type: "fr-en" },
+                { french: "Seventy", english: "Soixante-dix", type: "en-fr" },
+                { french: "Quatre-vingts", english: "Eighty", type: "fr-en" },
+                { french: "Ninety", english: "Quatre-vingt-dix", type: "en-fr" },
+                { french: "Cent", english: "One hundred", type: "fr-en" },
+                { french: "Zero", english: "Zéro", type: "en-fr" },
+                { french: "Premier", english: "First", type: "fr-en" },
+                { french: "Second", english: "Deuxième", type: "en-fr" },
+                { french: "Troisième", english: "Third", type: "fr-en" },
+                { french: "Fourth", english: "Quatrième", type: "en-fr" },
+                { french: "Cinquième", english: "Fifth", type: "fr-en" },
+                { french: "Sixth", english: "Sixième", type: "en-fr" },
+                { french: "Dernier", english: "Last", type: "fr-en" },
+                { french: "Half", english: "Demi", type: "en-fr" },
+                { french: "Quart", english: "Quarter", type: "fr-en" },
+                { french: "Double", english: "Double", type: "en-fr" },
+                { french: "Triple", english: "Triple", type: "fr-en" },
+                { french: "Pair", english: "Even", type: "en-fr" },
+                { french: "Impair", english: "Odd", type: "fr-en" },
+                { french: "Plus", english: "Plus", type: "en-fr" },
+                { french: "Moins", english: "Minus", type: "fr-en" },
+                { french: "Times", english: "Fois", type: "en-fr" },
+                { french: "Divisé par", english: "Divided by", type: "fr-en" },
+                { french: "Equals", english: "Égale", type: "en-fr" },
+                { french: "Million", english: "Million", type: "fr-en" },
+                { french: "Billion", english: "Milliard", type: "en-fr" },
+                { french: "Mille", english: "Thousand", type: "fr-en" },
+
+                // Colors (30 entries)
                 { french: "Rouge", english: "Red", type: "fr-en" },
                 { french: "Blue", english: "Bleu", type: "en-fr" },
                 { french: "Jaune", english: "Yellow", type: "fr-en" },
@@ -566,17 +646,27 @@
                 { french: "Blanc", english: "White", type: "fr-en" },
                 { french: "Brown", english: "Marron", type: "en-fr" },
                 { french: "Gris", english: "Gray", type: "fr-en" },
-                { french: "Silver", english: "Argenté", type: "en-fr" },
-                { french: "Doré", english: "Gold", type: "fr-en" },
+                { french: "Silver", english: "Argent", type: "en-fr" },
+                { french: "Or", english: "Gold", type: "fr-en" },
                 { french: "Beige", english: "Beige", type: "en-fr" },
                 { french: "Turquoise", english: "Turquoise", type: "fr-en" },
-                { french: "Magenta", english: "Magenta", type: "en-fr" },
-                { french: "Cyan", english: "Cyan", type: "fr-en" },
+                { french: "Navy", english: "Marine", type: "en-fr" },
+                { french: "Bordeaux", english: "Burgundy", type: "fr-en" },
+                { french: "Cream", english: "Crème", type: "en-fr" },
+                { french: "Magenta", english: "Magenta", type: "fr-en" },
                 { french: "Lime", english: "Citron vert", type: "en-fr" },
+                { french: "Cyan", english: "Cyan", type: "fr-en" },
+                { french: "Olive", english: "Olive", type: "en-fr" },
+                { french: "Saumon", english: "Salmon", type: "fr-en" },
+                { french: "Coral", english: "Corail", type: "en-fr" },
                 { french: "Indigo", english: "Indigo", type: "fr-en" },
-                { french: "Salmon", english: "Saumon", type: "en-fr" },
-                
-                // Animals (200+ entries)
+                { french: "Tan", english: "Bronzé", type: "en-fr" },
+                { french: "Khaki", english: "Kaki", type: "fr-en" },
+                { french: "Aqua", english: "Aqua", type: "en-fr" },
+                { french: "Lavande", english: "Lavender", type: "fr-en" },
+                { french: "Mint", english: "Menthe", type: "en-fr" },
+
+                // Animals (50 entries)
                 { french: "Chat", english: "Cat", type: "fr-en" },
                 { french: "Dog", english: "Chien", type: "en-fr" },
                 { french: "Oiseau", english: "Bird", type: "fr-en" },
@@ -593,843 +683,793 @@
                 { french: "Lion", english: "Lion", type: "en-fr" },
                 { french: "Tigre", english: "Tiger", type: "fr-en" },
                 { french: "Bear", english: "Ours", type: "en-fr" },
+                { french: "Loup", english: "Wolf", type: "fr-en" },
+                { french: "Fox", english: "Renard", type: "en-fr" },
                 { french: "Singe", english: "Monkey", type: "fr-en" },
-                { french: "Snake", english: "Serpent", type: "en-fr" },
+                { french: "Giraffe", english: "Girafe", type: "en-fr" },
+                { french: "Zèbre", english: "Zebra", type: "fr-en" },
+                { french: "Rhinoceros", english: "Rhinocéros", type: "en-fr" },
+                { french: "Hippopotame", english: "Hippopotamus", type: "fr-en" },
                 { french: "Turtle", english: "Tortue", type: "en-fr" },
+                { french: "Serpent", english: "Snake", type: "fr-en" },
+                { french: "Lizard", english: "Lézard", type: "en-fr" },
+                { french: "Aigle", english: "Eagle", type: "fr-en" },
+                { french: "Owl", english: "Hibou", type: "en-fr" },
+                { french: "Pingouin", english: "Penguin", type: "fr-en" },
+                { french: "Dolphin", english: "Dauphin", type: "en-fr" },
+                { french: "Baleine", english: "Whale", type: "fr-en" },
+                { french: "Shark", english: "Requin", type: "en-fr" },
+                { french: "Crabe", english: "Crab", type: "fr-en" },
+                { french: "Lobster", english: "Homard", type: "en-fr" },
                 { french: "Papillon", english: "Butterfly", type: "fr-en" },
                 { french: "Bee", english: "Abeille", type: "en-fr" },
                 { french: "Araignée", english: "Spider", type: "fr-en" },
                 { french: "Ant", english: "Fourmi", type: "en-fr" },
                 { french: "Mouche", english: "Fly", type: "fr-en" },
                 { french: "Mosquito", english: "Moustique", type: "en-fr" },
-                { french: "Coccinelle", english: "Ladybug", type: "fr-en" },
-                { french: "Dragonfly", english: "Libellule", type: "en-fr" },
-                { french: "Escargot", english: "Snail", type: "fr-en" },
-                { french: "Worm", english: "Ver", type: "en-fr" },
+                { french: "Chèvre", english: "Goat", type: "fr-en" },
+                { french: "Donkey", english: "Âne", type: "en-fr" },
                 { french: "Poule", english: "Chicken", type: "fr-en" },
                 { french: "Rooster", english: "Coq", type: "en-fr" },
                 { french: "Dinde", english: "Turkey", type: "fr-en" },
-                { french: "Goose", english: "Oie", type: "en-fr" },
-                { french: "Cygne", english: "Swan", type: "fr-en" },
-                { french: "Penguin", english: "Pingouin", type: "en-fr" },
-                { french: "Aigle", english: "Eagle", type: "fr-en" },
-                { french: "Owl", english: "Hibou", type: "en-fr" },
-                { french: "Perroquet", english: "Parrot", type: "fr-en" },
-                { french: "Sparrow", english: "Moineau", type: "en-fr" },
-                { french: "Pigeon", english: "Pigeon", type: "fr-en" },
-                { french: "Seagull", english: "Mouette", type: "en-fr" },
-                { french: "Corbeau", english: "Crow", type: "fr-en" },
-                { french: "Robin", english: "Rouge-gorge", type: "en-fr" },
-                { french: "Flamant", english: "Flamingo", type: "fr-en" },
-                { french: "Peacock", english: "Paon", type: "en-fr" },
-                { french: "Autruche", english: "Ostrich", type: "fr-en" },
-                { french: "Whale", english: "Baleine", type: "en-fr" },
-                { french: "Dauphin", english: "Dolphin", type: "fr-en" },
-                { french: "Shark", english: "Requin", type: "en-fr" },
-                { french: "Pieuvre", english: "Octopus", type: "fr-en" },
-                { french: "Starfish", english: "Étoile de mer", type: "en-fr" },
-                { french: "Crabe", english: "Crab", type: "fr-en" },
-                { french: "Lobster", english: "Homard", type: "en-fr" },
-                { french: "Crevette", english: "Shrimp", type: "fr-en" },
-                { french: "Seahorse", english: "Hippocampe", type: "en-fr" },
-                { french: "Méduse", english: "Jellyfish", type: "fr-en" },
-                { french: "Seal", english: "Phoque", type: "en-fr" },
-                { french: "Manchot", english: "Penguin", type: "fr-en" },
-                { french: "Walrus", english: "Morse", type: "en-fr" },
-                { french: "Hippopotame", english: "Hippopotamus", type: "fr-en" },
-                { french: "Crocodile", english: "Crocodile", type: "en-fr" },
-                { french: "Alligator", english: "Alligator", type: "fr-en" },
-                { french: "Lizard", english: "Lézard", type: "en-fr" },
-                { french: "Gecko", english: "Gecko", type: "fr-en" },
-                { french: "Iguana", english: "Iguane", type: "en-fr" },
-                { french: "Salamandre", english: "Salamander", type: "fr-en" },
-                { french: "Toad", english: "Crapaud", type: "en-fr" },
-                { french: "Renard", english: "Fox", type: "fr-en" },
-                { french: "Wolf", english: "Loup", type: "en-fr" },
-                { french: "Cerf", english: "Deer", type: "fr-en" },
-                { french: "Moose", english: "Élan", type: "en-fr" },
-                { french: "Renne", english: "Reindeer", type: "fr-en" },
-                { french: "Elk", english: "Wapiti", type: "en-fr" },
-                { french: "Bison", english: "Bison", type: "fr-en" },
-                { french: "Buffalo", english: "Buffle", type: "en-fr" },
-                { french: "Rhinocéros", english: "Rhinoceros", type: "fr-en" },
-                { french: "Giraffe", english: "Girafe", type: "en-fr" },
-                { french: "Zèbre", english: "Zebra", type: "fr-en" },
-                { french: "Antelope", english: "Antilope", type: "en-fr" },
-                { french: "Gazelle", english: "Gazelle", type: "fr-en" },
-                { french: "Cheetah", english: "Guépard", type: "en-fr" },
-                { french: "Léopard", english: "Leopard", type: "fr-en" },
-                { french: "Jaguar", english: "Jaguar", type: "en-fr" },
-                { french: "Puma", english: "Puma", type: "fr-en" },
-                { french: "Lynx", english: "Lynx", type: "en-fr" },
-                { french: "Hyène", english: "Hyena", type: "fr-en" },
-                { french: "Meerkat", english: "Suricate", type: "en-fr" },
+                { french: "Deer", english: "Cerf", type: "en-fr" },
                 { french: "Écureuil", english: "Squirrel", type: "fr-en" },
-                { french: "Chipmunk", english: "Tamia", type: "en-fr" },
-                { french: "Castor", english: "Beaver", type: "fr-en" },
-                { french: "Otter", english: "Loutre", type: "en-fr" },
-                { french: "Hérisson", english: "Hedgehog", type: "fr-en" },
-                { french: "Porcupine", english: "Porc-épic", type: "en-fr" },
-                { french: "Mouffette", english: "Skunk", type: "fr-en" },
                 { french: "Raccoon", english: "Raton laveur", type: "en-fr" },
-                { french: "Opossum", english: "Opossum", type: "fr-en" },
-                { french: "Badger", english: "Blaireau", type: "en-fr" },
-                { french: "Belette", english: "Weasel", type: "fr-en" },
-                { french: "Ferret", english: "Furet", type: "en-fr" },
-                { french: "Martre", english: "Marten", type: "fr-en" },
-                { french: "Mink", english: "Vison", type: "en-fr" },
-                { french: "Chauve-souris", english: "Bat", type: "fr-en" },
-                { french: "Hamster", english: "Hamster", type: "en-fr" },
-                { french: "Cochon d'Inde", english: "Guinea pig", type: "fr-en" },
-                { french: "Gerbil", english: "Gerbille", type: "en-fr" },
-                { french: "Rat", english: "Rat", type: "fr-en" },
-                { french: "Chinchilla", english: "Chinchilla", type: "en-fr" },
-                { french: "Koala", english: "Koala", type: "fr-en" },
-                { french: "Kangaroo", english: "Kangourou", type: "en-fr" },
-                { french: "Wallaby", english: "Wallaby", type: "fr-en" },
-                { french: "Wombat", english: "Wombat", type: "en-fr" },
-                { french: "Tasmanian devil", english: "Diable de Tasmanie", type: "en-fr" },
-                { french: "Panda", english: "Panda", type: "fr-en" },
-                { french: "Sloth", english: "Paresseux", type: "en-fr" },
-                { french: "Tatou", english: "Armadillo", type: "fr-en" },
-                { french: "Anteater", english: "Fourmilier", type: "en-fr" },
-                { french: "Lama", english: "Llama", type: "fr-en" },
-                { french: "Alpaca", english: "Alpaga", type: "en-fr" },
-                { french: "Chameau", english: "Camel", type: "fr-en" },
-                { french: "Dromedary", english: "Dromadaire", type: "en-fr" },
-                { french: "Yak", english: "Yak", type: "fr-en" },
-                { french: "Goat", english: "Chèvre", type: "en-fr" },
-                { french: "Âne", english: "Donkey", type: "fr-en" },
-                { french: "Mule", english: "Mulet", type: "en-fr" },
-                { french: "Poney", english: "Pony", type: "fr-en" },
-                { french: "Stallion", english: "Étalon", type: "en-fr" },
-                { french: "Jument", english: "Mare", type: "fr-en" },
-                { french: "Foal", english: "Poulain", type: "en-fr" },
-                { french: "Taureau", english: "Bull", type: "fr-en" },
-                { french: "Calf", english: "Veau", type: "en-fr" },
-                
-                // Body parts (100+ entries)
+                { french: "Castor", english: "Beaver", type: "fr-en" },
+                { french: "Bat", english: "Chauve-souris", type: "en-fr" },
+
+                // Body parts (40 entries)
                 { french: "Tête", english: "Head", type: "fr-en" },
-                { french: "Hair", english: "Cheveux", type: "en-fr" },
-                { french: "Visage", english: "Face", type: "fr-en" },
                 { french: "Eyes", english: "Yeux", type: "en-fr" },
                 { french: "Nez", english: "Nose", type: "fr-en" },
                 { french: "Mouth", english: "Bouche", type: "en-fr" },
-                { french: "Lèvres", english: "Lips", type: "fr-en" },
-                { french: "Teeth", english: "Dents", type: "en-fr" },
-                { french: "Langue", english: "Tongue", type: "fr-en" },
-                { french: "Chin", english: "Menton", type: "en-fr" },
-                { french: "Joues", english: "Cheeks", type: "fr-en" },
-                { french: "Forehead", english: "Front", type: "en-fr" },
-                { french: "Sourcils", english: "Eyebrows", type: "fr-en" },
-                { french: "Eyelashes", english: "Cils", type: "en-fr" },
                 { french: "Oreilles", english: "Ears", type: "fr-en" },
+                { french: "Hair", english: "Cheveux", type: "en-fr" },
+                { french: "Visage", english: "Face", type: "fr-en" },
                 { french: "Neck", english: "Cou", type: "en-fr" },
                 { french: "Épaules", english: "Shoulders", type: "fr-en" },
                 { french: "Arms", english: "Bras", type: "en-fr" },
-                { french: "Coudes", english: "Elbows", type: "fr-en" },
-                { french: "Wrists", english: "Poignets", type: "en-fr" },
                 { french: "Mains", english: "Hands", type: "fr-en" },
                 { french: "Fingers", english: "Doigts", type: "en-fr" },
-                { french: "Pouce", english: "Thumb", type: "fr-en" },
-                { french: "Palm", english: "Paume", type: "en-fr" },
-                { french: "Ongles", english: "Nails", type: "fr-en" },
-                { french: "Chest", english: "Poitrine", type: "en-fr" },
-                { french: "Dos", english: "Back", type: "fr-en" },
-                { french: "Stomach", english: "Ventre", type: "en-fr" },
-                { french: "Taille", english: "Waist", type: "fr-en" },
-                { french: "Hips", english: "Hanches", type: "en-fr" },
-                { french: "Jambes", english: "Legs", type: "fr-en" },
-                { french: "Thighs", english: "Cuisses", type: "en-fr" },
+                { french: "Poitrine", english: "Chest", type: "fr-en" },
+                { french: "Back", english: "Dos", type: "en-fr" },
+                { french: "Ventre", english: "Belly", type: "fr-en" },
+                { french: "Legs", english: "Jambes", type: "en-fr" },
                 { french: "Genoux", english: "Knees", type: "fr-en" },
-                { french: "Calves", english: "Mollets", type: "en-fr" },
-                { french: "Chevilles", english: "Ankles", type: "fr-en" },
                 { french: "Feet", english: "Pieds", type: "en-fr" },
                 { french: "Orteils", english: "Toes", type: "fr-en" },
-                { french: "Heels", english: "Talons", type: "en-fr" },
-                { french: "Colonne vertébrale", english: "Spine", type: "fr-en" },
-                { french: "Ribs", english: "Côtes", type: "en-fr" },
-                { french: "Cœur", english: "Heart", type: "fr-en" },
-                { french: "Lungs", english: "Poumons", type: "en-fr" },
-                { french: "Foie", english: "Liver", type: "fr-en" },
-                { french: "Kidneys", english: "Reins", type: "en-fr" },
-                { french: "Estomac", english: "Stomach", type: "fr-en" },
+                { french: "Elbow", english: "Coude", type: "en-fr" },
+                { french: "Poignet", english: "Wrist", type: "fr-en" },
+                { french: "Ankle", english: "Cheville", type: "en-fr" },
+                { french: "Talon", english: "Heel", type: "fr-en" },
+                { french: "Thumb", english: "Pouce", type: "en-fr" },
+                { french: "Sourcils", english: "Eyebrows", type: "fr-en" },
+                { french: "Eyelashes", english: "Cils", type: "en-fr" },
+                { french: "Joues", english: "Cheeks", type: "fr-en" },
+                { french: "Chin", english: "Menton", type: "en-fr" },
+                { french: "Front", english: "Front", type: "fr-en" },
+                { french: "Lip", english: "Lèvre", type: "en-fr" },
+                { french: "Dents", english: "Teeth", type: "fr-en" },
+                { french: "Tongue", english: "Langue", type: "en-fr" },
+                { french: "Gorge", english: "Throat", type: "fr-en" },
                 { french: "Brain", english: "Cerveau", type: "en-fr" },
-                { french: "Sang", english: "Blood", type: "fr-en" },
-                { french: "Bones", english: "Os", type: "en-fr" },
-                { french: "Muscles", english: "Muscles", type: "fr-en" },
-                { french: "Skin", english: "Peau", type: "en-fr" },
-                
-                // Simple food and drinks (200+ entries)
+                { french: "Cœur", english: "Heart", type: "fr-en" },
+                { french: "Stomach", english: "Estomac", type: "en-fr" },
+                { french: "Foie", english: "Liver", type: "fr-en" },
+                { french: "Lungs", english: "Poumons", type: "en-fr" },
+                { french: "Reins", english: "Kidneys", type: "fr-en" },
+                { french: "Bone", english: "Os", type: "en-fr" },
+
+                // Food and drinks (60 entries)
                 { french: "Eau", english: "Water", type: "fr-en" },
                 { french: "Milk", english: "Lait", type: "en-fr" },
-                { french: "Jus", english: "Juice", type: "fr-en" },
-                { french: "Coffee", english: "Café", type: "en-fr" },
-                { french: "Thé", english: "Tea", type: "fr-en" },
-                { french: "Soda", english: "Soda", type: "en-fr" },
-                { french: "Bière", english: "Beer", type: "fr-en" },
-                { french: "Wine", english: "Vin", type: "en-fr" },
                 { french: "Pain", english: "Bread", type: "fr-en" },
-                { french: "Butter", english: "Beurre", type: "en-fr" },
-                { french: "Fromage", english: "Cheese", type: "fr-en" },
-                { french: "Egg", english: "Œuf", type: "en-fr" },
+                { french: "Apple", english: "Pomme", type: "en-fr" },
+                { french: "Banane", english: "Banana", type: "fr-en" },
+                { french: "Orange", english: "Orange", type: "en-fr" },
+                { french: "Fraise", english: "Strawberry", type: "fr-en" },
+                { french: "Grape", english: "Raisin", type: "en-fr" },
+                { french: "Poire", english: "Pear", type: "fr-en" },
+                { french: "Peach", english: "Pêche", type: "en-fr" },
+                { french: "Citron", english: "Lemon", type: "fr-en" },
+                { french: "Cherry", english: "Cerise", type: "en-fr" },
+                { french: "Ananas", english: "Pineapple", type: "fr-en" },
+                { french: "Carrot", english: "Carotte", type: "en-fr" },
+                { french: "Tomate", english: "Tomato", type: "fr-en" },
+                { french: "Potato", english: "Pomme de terre", type: "en-fr" },
+                { french: "Oignon", english: "Onion", type: "fr-en" },
+                { french: "Lettuce", english: "Laitue", type: "en-fr" },
+                { french: "Concombre", english: "Cucumber", type: "fr-en" },
+                { french: "Pepper", english: "Poivron", type: "en-fr" },
+                { french: "Ail", english: "Garlic", type: "fr-en" },
+                { french: "Rice", english: "Riz", type: "en-fr" },
+                { french: "Pâtes", english: "Pasta", type: "fr-en" },
+                { french: "Cheese", english: "Fromage", type: "en-fr" },
                 { french: "Viande", english: "Meat", type: "fr-en" },
                 { french: "Chicken", english: "Poulet", type: "en-fr" },
                 { french: "Bœuf", english: "Beef", type: "fr-en" },
                 { french: "Pork", english: "Porc", type: "en-fr" },
                 { french: "Poisson", english: "Fish", type: "fr-en" },
-                { french: "Salmon", english: "Saumon", type: "en-fr" },
-                { french: "Thon", english: "Tuna", type: "fr-en" },
-                { french: "Shrimp", english: "Crevettes", type: "en-fr" },
-                { french: "Pomme", english: "Apple", type: "fr-en" },
-                { french: "Banana", english: "Banane", type: "en-fr" },
-                { french: "Orange", english: "Orange", type: "fr-en" },
-                { french: "Grape", english: "Raisin", type: "en-fr" },
-                { french: "Fraise", english: "Strawberry", type: "fr-en" },
-                { french: "Blueberry", english: "Myrtille", type: "en-fr" },
-                { french: "Framboise", english: "Raspberry", type: "fr-en" },
-                { french: "Cherry", english: "Cerise", type: "en-fr" },
-                { french: "Pêche", english: "Peach", type: "fr-en" },
-                { french: "Pear", english: "Poire", type: "en-fr" },
-                { french: "Ananas", english: "Pineapple", type: "fr-en" },
-                { french: "Mango", english: "Mangue", type: "en-fr" },
-                { french: "Kiwi", english: "Kiwi", type: "fr-en" },
-                { french: "Watermelon", english: "Pastèque", type: "en-fr" },
-                { french: "Melon", english: "Melon", type: "fr-en" },
-                { french: "Lemon", english: "Citron", type: "en-fr" },
-                { french: "Lime", english: "Citron vert", type: "en-fr" },
-                { french: "Pamplemousse", english: "Grapefruit", type: "fr-en" },
-                { french: "Coconut", english: "Noix de coco", type: "en-fr" },
-                { french: "Avocat", english: "Avocado", type: "fr-en" },
-                { french: "Tomato", english: "Tomate", type: "en-fr" },
-                { french: "Concombre", english: "Cucumber", type: "fr-en" },
-                { french: "Lettuce", english: "Laitue", type: "en-fr" },
-                { french: "Épinards", english: "Spinach", type: "fr-en" },
-                { french: "Carrot", english: "Carotte", type: "en-fr" },
-                { french: "Pomme de terre", english: "Potato", type: "fr-en" },
-                { french: "Onion", english: "Oignon", type: "en-fr" },
-                { french: "Ail", english: "Garlic", type: "fr-en" },
-                { french: "Pepper", english: "Poivron", type: "en-fr" },
-                { french: "Brocoli", english: "Broccoli", type: "fr-en" },
-                { french: "Cauliflower", english: "Chou-fleur", type: "en-fr" },
-                { french: "Chou", english: "Cabbage", type: "fr-en" },
-                { french: "Corn", english: "Maïs", type: "en-fr" },
-                { french: "Petits pois", english: "Peas", type: "fr-en" },
-                { french: "Beans", english: "Haricots", type: "en-fr" },
-                { french: "Champignons", english: "Mushrooms", type: "fr-en" },
-                { french: "Rice", english: "Riz", type: "en-fr" },
-                { french: "Pâtes", english: "Pasta", type: "fr-en" },
-                { french: "Cereal", english: "Céréales", type: "en-fr" },
-                { french: "Avoine", english: "Oats", type: "fr-en" },
-                { french: "Nuts", english: "Noix", type: "en-fr" },
-                { french: "Amandes", english: "Almonds", type: "fr-en" },
-                { french: "Peanuts", english: "Cacahuètes", type: "en-fr" },
-                { french: "Graines", english: "Seeds", type: "fr-en" },
-                { french: "Honey", english: "Miel", type: "en-fr" },
-                { french: "Sucre", english: "Sugar", type: "fr-en" },
-                { french: "Salt", english: "Sel", type: "en-fr" },
-                { french: "Poivre", english: "Pepper", type: "fr-en" },
-                { french: "Oil", english: "Huile", type: "en-fr" },
-                { french: "Vinaigre", english: "Vinegar", type: "fr-en" },
-                { french: "Sauce", english: "Sauce", type: "en-fr" },
+                { french: "Egg", english: "Œuf", type: "en-fr" },
+                { french: "Beurre", english: "Butter", type: "fr-en" },
+                { french: "Sugar", english: "Sucre", type: "en-fr" },
+                { french: "Sel", english: "Salt", type: "fr-en" },
+                { french: "Coffee", english: "Café", type: "en-fr" },
+                { french: "Thé", english: "Tea", type: "fr-en" },
+                { french: "Juice", english: "Jus", type: "en-fr" },
+                { french: "Vin", english: "Wine", type: "fr-en" },
+                { french: "Beer", english: "Bière", type: "en-fr" },
                 { french: "Soupe", english: "Soup", type: "fr-en" },
                 { french: "Salad", english: "Salade", type: "en-fr" },
                 { french: "Sandwich", english: "Sandwich", type: "fr-en" },
                 { french: "Pizza", english: "Pizza", type: "en-fr" },
-                { french: "Hamburger", english: "Hamburger", type: "fr-en" },
-                { french: "Hot dog", english: "Hot dog", type: "en-fr" },
-                { french: "Tacos", english: "Tacos", type: "fr-en" },
-                { french: "Sushi", english: "Sushi", type: "en-fr" },
                 { french: "Gâteau", english: "Cake", type: "fr-en" },
                 { french: "Cookie", english: "Biscuit", type: "en-fr" },
-                { french: "Tarte", english: "Pie", type: "fr-en" },
-                { french: "Ice cream", english: "Glace", type: "en-fr" },
                 { french: "Chocolat", english: "Chocolate", type: "fr-en" },
-                { french: "Candy", english: "Bonbons", type: "en-fr" },
-                { french: "Chewing-gum", english: "Gum", type: "fr-en" },
-                { french: "Popcorn", english: "Pop-corn", type: "en-fr" },
-                { french: "Chips", english: "Chips", type: "fr-en" },
-                { french: "Crackers", english: "Crackers", type: "en-fr" },
+                { french: "Ice cream", english: "Glace", type: "en-fr" },
+                { french: "Bonbon", english: "Candy", type: "fr-en" },
+                { french: "Honey", english: "Miel", type: "en-fr" },
                 { french: "Yaourt", english: "Yogurt", type: "fr-en" },
+                { french: "Nuts", english: "Noix", type: "en-fr" },
+                { french: "Huile", english: "Oil", type: "fr-en" },
+                { french: "Vinegar", english: "Vinaigre", type: "en-fr" },
+                { french: "Moutarde", english: "Mustard", type: "fr-en" },
+                { french: "Ketchup", english: "Ketchup", type: "en-fr" },
+                { french: "Mayo", english: "Mayonnaise", type: "fr-en" },
+                { french: "Sauce", english: "Sauce", type: "en-fr" },
+                { french: "Épices", english: "Spices", type: "fr-en" },
+                { french: "Herbs", english: "Herbes", type: "en-fr" },
+                { french: "Farine", english: "Flour", type: "fr-en" },
                 { french: "Cream", english: "Crème", type: "en-fr" },
-                
-                // Basic emotions and feelings (100+ entries)
+                { french: "Sirop", english: "Syrup", type: "fr-en" },
+
+                // Basic emotions and feelings (30 entries)
                 { french: "Heureux", english: "Happy", type: "fr-en" },
                 { french: "Sad", english: "Triste", type: "en-fr" },
-                { french: "En colère", english: "Angry", type: "fr-en" },
-                { french: "Excited", english: "Excité", type: "en-fr" },
                 { french: "Fatigué", english: "Tired", type: "fr-en" },
-                { french: "Hungry", english: "Affamé", type: "en-fr" },
-                { french: "Assoiffé", english: "Thirsty", type: "fr-en" },
-                { french: "Scared", english: "Effrayé", type: "en-fr" },
-                { french: "Nerveux", english: "Nervous", type: "fr-en" },
-                { french: "Calm", english: "Calme", type: "en-fr" },
+                { french: "Angry", english: "Fâché", type: "en-fr" },
+                { french: "Peur", english: "Fear", type: "fr-en" },
+                { french: "Excited", english: "Excité", type: "en-fr" },
+                { french: "Calme", english: "Calm", type: "fr-en" },
+                { french: "Nervous", english: "Nerveux", type: "en-fr" },
                 { french: "Surpris", english: "Surprised", type: "fr-en" },
                 { french: "Confused", english: "Confus", type: "en-fr" },
                 { french: "Fier", english: "Proud", type: "fr-en" },
                 { french: "Embarrassed", english: "Gêné", type: "en-fr" },
                 { french: "Jaloux", english: "Jealous", type: "fr-en" },
-                { french: "Lonely", english: "Seul", type: "en-fr" },
-                { french: "Ennuyé", english: "Bored", type: "fr-en" },
-                { french: "Interested", english: "Intéressé", type: "en-fr" },
-                { french: "Curieux", english: "Curious", type: "fr-en" },
                 { french: "Worried", english: "Inquiet", type: "en-fr" },
-                { french: "Soulagé", english: "Relieved", type: "fr-en" },
-                { french: "Grateful", english: "Reconnaissant", type: "en-fr" },
-                { french: "Déçu", english: "Disappointed", type: "fr-en" },
-                { french: "Frustrated", english: "Frustré", type: "en-fr" },
-                { french: "Optimiste", english: "Optimistic", type: "fr-en" },
-                { french: "Pessimistic", english: "Pessimiste", type: "en-fr" },
-                { french: "Motivé", english: "Motivated", type: "fr-en" },
-                { french: "Lazy", english: "Paresseux", type: "en-fr" },
+                { french: "Content", english: "Content", type: "fr-en" },
+                { french: "Bored", english: "Ennuyé", type: "en-fr" },
                 { french: "Stressé", english: "Stressed", type: "fr-en" },
                 { french: "Relaxed", english: "Détendu", type: "en-fr" },
-                { french: "Malade", english: "Sick", type: "fr-en" },
-                { french: "Healthy", english: "En bonne santé", type: "en-fr" },
-                { french: "Douloureux", english: "Painful", type: "fr-en" },
-                { french: "Comfortable", english: "Confortable", type: "en-fr" },
-                { french: "Chaud", english: "Hot", type: "fr-en" },
-                { french: "Cold", english: "Froid", type: "en-fr" },
-                { french: "Humide", english: "Wet", type: "fr-en" },
-                { french: "Dry", english: "Sec", type: "en-fr" },
-                { french: "Propre", english: "Clean", type: "fr-en" },
-                { french: "Dirty", english: "Sale", type: "en-fr" },
-                { french: "Nouveau", english: "New", type: "fr-en" },
-                { french: "Old", english: "Vieux", type: "en-fr" },
-                { french: "Jeune", english: "Young", type: "fr-en" },
-                { french: "Fast", english: "Rapide", type: "en-fr" },
-                { french: "Lent", english: "Slow", type: "fr-en" },
-                { french: "Big", english: "Grand", type: "en-fr" },
-                { french: "Petit", english: "Small", type: "fr-en" },
-                { french: "Tall", english: "Grand", type: "en-fr" },
-                { french: "Court", english: "Short", type: "fr-en" },
-                { french: "Long", english: "Long", type: "en-fr" },
-                { french: "Large", english: "Large", type: "fr-en" },
-                { french: "Narrow", english: "Étroit", type: "en-fr" },
-                { french: "Épais", english: "Thick", type: "fr-en" },
-                { french: "Thin", english: "Mince", type: "en-fr" },
-                { french: "Lourd", english: "Heavy", type: "fr-en" },
-                { french: "Light", english: "Léger", type: "en-fr" },
-                { french: "Dur", english: "Hard", type: "fr-en" },
-                { french: "Soft", english: "Doux", type: "en-fr" },
-                { french: "Lisse", english: "Smooth", type: "fr-en" },
-                { french: "Rough", english: "Rugueux", type: "en-fr" },
-                { french: "Pointu", english: "Sharp", type: "fr-en" },
-                { french: "Dull", english: "Émoussé", type: "en-fr" },
-                { french: "Brillant", english: "Bright", type: "fr-en" },
-                { french: "Dark", english: "Sombre", type: "en-fr" },
-                { french: "Clair", english: "Light", type: "fr-en" },
-                { french: "Loud", english: "Fort", type: "en-fr" },
-                { french: "Silencieux", english: "Quiet", type: "fr-en" },
-                { french: "Sweet", english: "Sucré", type: "en-fr" },
-                { french: "Amer", english: "Bitter", type: "fr-en" },
-                { french: "Sour", english: "Aigre", type: "en-fr" },
-                { french: "Salé", english: "Salty", type: "fr-en" },
-                { french: "Spicy", english: "Épicé", type: "en-fr" },
-                
-                // Days, months, seasons (50+ entries)
-                { french: "Lundi", english: "Monday", type: "fr-en" },
-                { french: "Tuesday", english: "Mardi", type: "en-fr" },
-                { french: "Mercredi", english: "Wednesday", type: "fr-en" },
-                { french: "Thursday", english: "Jeudi", type: "en-fr" },
-                { french: "Vendredi", english: "Friday", type: "fr-en" },
-                { french: "Saturday", english: "Samedi", type: "en-fr" },
-                { french: "Dimanche", english: "Sunday", type: "fr-en" },
-                { french: "Today", english: "Aujourd'hui", type: "en-fr" },
-                { french: "Hier", english: "Yesterday", type: "fr-en" },
-                { french: "Tomorrow", english: "Demain", type: "en-fr" },
-                { french: "Semaine", english: "Week", type: "fr-en" },
-                { french: "Weekend", english: "Week-end", type: "en-fr" },
-                { french: "Janvier", english: "January", type: "fr-en" },
-                { french: "February", english: "Février", type: "en-fr" },
-                { french: "Mars", english: "March", type: "fr-en" },
-                { french: "April", english: "Avril", type: "en-fr" },
-                { french: "Mai", english: "May", type: "fr-en" },
-                { french: "June", english: "Juin", type: "en-fr" },
-                { french: "Juillet", english: "July", type: "fr-en" },
-                { french: "August", english: "Août", type: "en-fr" },
-                { french: "Septembre", english: "September", type: "fr-en" },
-                { french: "October", english: "Octobre", type: "en-fr" },
-                { french: "Novembre", english: "November", type: "fr-en" },
-                { french: "December", english: "Décembre", type: "en-fr" },
-                { french: "Printemps", english: "Spring", type: "fr-en" },
-                { french: "Summer", english: "Été", type: "en-fr" },
-                { french: "Automne", english: "Fall", type: "fr-en" },
-                { french: "Winter", english: "Hiver", type: "en-fr" },
-                { french: "Année", english: "Year", type: "fr-en" },
-                { french: "Month", english: "Mois", type: "en-fr" },
-                { french: "Jour", english: "Day", type: "fr-en" },
-                { french: "Hour", english: "Heure", type: "en-fr" },
-                { french: "Minute", english: "Minute", type: "fr-en" },
-                { french: "Second", english: "Seconde", type: "en-fr" },
-                { french: "Matin", english: "Morning", type: "fr-en" },
-                { french: "Afternoon", english: "Après-midi", type: "en-fr" },
-                { french: "Soir", english: "Evening", type: "fr-en" },
-                { french: "Night", english: "Nuit", type: "en-fr" },
-                { french: "Minuit", english: "Midnight", type: "fr-en" },
-                { french: "Noon", english: "Midi", type: "en-fr" },
-                { french: "Lever du soleil", english: "Sunrise", type: "fr-en" },
-                { french: "Sunset", english: "Coucher du soleil", type: "en-fr" },
-                
-                // Weather (50+ entries)
+                { french: "Amoureux", english: "In love", type: "fr-en" },
+                { french: "Lonely", english: "Seul", type: "en-fr" },
+                { french: "Optimiste", english: "Optimistic", type: "fr-en" },
+                { french: "Pessimistic", english: "Pessimiste", type: "en-fr" },
+                { french: "Curieux", english: "Curious", type: "fr-en" },
+                { french: "Patient", english: "Patient", type: "en-fr" },
+                { french: "Impatient", english: "Impatient", type: "fr-en" },
+                { french: "Grateful", english: "Reconnaissant", type: "en-fr" },
+                { french: "Déçu", english: "Disappointed", type: "fr-en" },
+                { french: "Hopeful", english: "Plein d'espoir", type: "en-fr" },
+                { french: "Découragé", english: "Discouraged", type: "fr-en" },
+                { french: "Confident", english: "Confiant", type: "en-fr" },
+
+                // Weather and seasons (30 entries)
                 { french: "Soleil", english: "Sun", type: "fr-en" },
                 { french: "Rain", english: "Pluie", type: "en-fr" },
                 { french: "Neige", english: "Snow", type: "fr-en" },
                 { french: "Wind", english: "Vent", type: "en-fr" },
-                { french: "Nuages", english: "Clouds", type: "fr-en" },
+                { french: "Nuage", english: "Cloud", type: "fr-en" },
                 { french: "Storm", english: "Orage", type: "en-fr" },
-                { french: "Tonnerre", english: "Thunder", type: "fr-en" },
-                { french: "Lightning", english: "Éclair", type: "en-fr" },
-                { french: "Arc-en-ciel", english: "Rainbow", type: "fr-en" },
-                { french: "Fog", english: "Brouillard", type: "en-fr" },
-                { french: "Grêle", english: "Hail", type: "fr-en" },
-                { french: "Frost", english: "Givre", type: "en-fr" },
-                { french: "Glace", english: "Ice", type: "fr-en" },
-                { french: "Mud", english: "Boue", type: "en-fr" },
-                { french: "Humidité", english: "Humidity", type: "fr-en" },
-                { french: "Temperature", english: "Température", type: "en-fr" },
-                { french: "Degré", english: "Degree", type: "fr-en" },
-                { french: "Celsius", english: "Celsius", type: "en-fr" },
-                { french: "Fahrenheit", english: "Fahrenheit", type: "fr-en" },
-                { french: "Cloudy", english: "Nuageux", type: "en-fr" },
+                { french: "Brouillard", english: "Fog", type: "fr-en" },
+                { french: "Hot", english: "Chaud", type: "en-fr" },
+                { french: "Froid", english: "Cold", type: "fr-en" },
+                { french: "Warm", english: "Tiède", type: "en-fr" },
+                { french: "Frais", english: "Cool", type: "fr-en" },
+                { french: "Humid", english: "Humide", type: "en-fr" },
+                { french: "Sec", english: "Dry", type: "fr-en" },
+                { french: "Windy", english: "Venteux", type: "en-fr" },
                 { french: "Ensoleillé", english: "Sunny", type: "fr-en" },
-                { french: "Rainy", english: "Pluvieux", type: "en-fr" },
-                { french: "Venteux", english: "Windy", type: "fr-en" },
+                { french: "Cloudy", english: "Nuageux", type: "en-fr" },
+                { french: "Pluvieux", english: "Rainy", type: "fr-en" },
                 { french: "Snowy", english: "Neigeux", type: "en-fr" },
-                { french: "Orageux", english: "Stormy", type: "fr-en" },
-                { french: "Clear", english: "Clair", type: "en-fr" },
-                { french: "Sombre", english: "Gloomy", type: "fr-en" },
-                { french: "Mild", english: "Doux", type: "en-fr" },
-                { french: "Glacial", english: "Freezing", type: "fr-en" },
-                { french: "Boiling", english: "Bouillant", type: "en-fr" },
-                { french: "Tiède", english: "Warm", type: "fr-en" },
-                { french: "Cool", english: "Frais", type: "en-fr" },
-                { french: "Agréable", english: "Pleasant", type: "fr-en" },
-                { french: "Terrible", english: "Terrible", type: "en-fr" },
-                { french: "Parfait", english: "Perfect", type: "fr-en" },
-                { french: "Changing", english: "Changeant", type: "en-fr" },
-                { french: "Stable", english: "Stable", type: "fr-en" },
-                { french: "Unpredictable", english: "Imprévisible", type: "en-fr" },
-                { french: "Prévision", english: "Forecast", type: "fr-en" },
-                { french: "Climate", english: "Climat", type: "en-fr" },
-                { french: "Saison", english: "Season", type: "fr-en" },
-                { french: "Drought", english: "Sécheresse", type: "en-fr" },
-                { french: "Inondation", english: "Flood", type: "fr-en" },
-                { french: "Hurricane", english: "Ouragan", type: "en-fr" },
-                { french: "Tornade", english: "Tornado", type: "fr-en" },
-                { french: "Blizzard", english: "Blizzard", type: "en-fr" },
-                { french: "Canicule", english: "Heat wave", type: "fr-en" },
-                { french: "Cold front", english: "Front froid", type: "en-fr" },
-                { french: "Pression", english: "Pressure", type: "fr-en" },
-                { french: "Barometer", english: "Baromètre", type: "en-fr" },
-                
-                // Basic school items (100+ entries)
-                { french: "École", english: "School", type: "fr-en" },
-                { french: "Teacher", english: "Professeur", type: "en-fr" },
-                { french: "Élève", english: "Student", type: "fr-en" },
-                { french: "Classroom", english: "Salle de classe", type: "en-fr" },
-                { french: "Bureau", english: "Desk", type: "fr-en" },
-                { french: "Chair", english: "Chaise", type: "en-fr" },
-                { french: "Tableau", english: "Blackboard", type: "fr-en" },
-                { french: "Whiteboard", english: "Tableau blanc", type: "en-fr" },
-                { french: "Livre", english: "Book", type: "fr-en" },
-                { french: "Notebook", english: "Cahier", type: "en-fr" },
-                { french: "Crayon", english: "Pencil", type: "fr-en" },
-                { french: "Pen", english: "Stylo", type: "en-fr" },
-                { french: "Gomme", english: "Eraser", type: "fr-en" },
-                { french: "Ruler", english: "Règle", type: "en-fr" },
-                { french: "Ciseaux", english: "Scissors", type: "fr-en" },
-                { french: "Glue", english: "Colle", type: "en-fr" },
-                { french: "Papier", english: "Paper", type: "fr-en" },
-                { french: "Homework", english: "Devoirs", type: "en-fr" },
-                { french: "Examen", english: "Test", type: "fr-en" },
-                { french: "Grade", english: "Note", type: "en-fr" },
-                { french: "Cours", english: "Class", type: "fr-en" },
-                { french: "Subject", english: "Matière", type: "en-fr" },
-                { french: "Mathématiques", english: "Mathematics", type: "fr-en" },
-                { french: "Science", english: "Science", type: "en-fr" },
-                { french: "Histoire", english: "History", type: "fr-en" },
-                { french: "Geography", english: "Géographie", type: "en-fr" },
-                { french: "Art", english: "Art", type: "fr-en" },
-                { french: "Music", english: "Musique", type: "en-fr" },
-                { french: "Sport", english: "Sports", type: "fr-en" },
-                { french: "English", english: "Anglais", type: "en-fr" },
-                { french: "Français", english: "French", type: "fr-en" },
-                { french: "Spanish", english: "Espagnol", type: "en-fr" },
-                { french: "Récréation", english: "Recess", type: "fr-en" },
-                { french: "Lunch", english: "Déjeuner", type: "en-fr" },
-                { french: "Sac à dos", english: "Backpack", type: "fr-en" },
-                { french: "Locker", english: "Casier", type: "en-fr" },
-                { french: "Bibliothèque", english: "Library", type: "fr-en" },
-                { french: "Computer", english: "Ordinateur", type: "en-fr" },
-                { french: "Calculatrice", english: "Calculator", type: "fr-en" },
-                { french: "Dictionary", english: "Dictionnaire", type: "en-fr" },
-                
-                // House and home items (100+ entries)
-                { french: "Maison", english: "House", type: "fr-en" },
-                { french: "Home", english: "Foyer", type: "en-fr" },
-                { french: "Appartement", english: "Apartment", type: "fr-en" },
-                { french: "Room", english: "Chambre", type: "en-fr" },
-                { french: "Cuisine", english: "Kitchen", type: "fr-en" },
-                { french: "Living room", english: "Salon", type: "en-fr" },
-                { french: "Salle à manger", english: "Dining room", type: "fr-en" },
-                { french: "Bathroom", english: "Salle de bain", type: "en-fr" },
-                { french: "Chambre à coucher", english: "Bedroom", type: "fr-en" },
-                { french: "Basement", english: "Sous-sol", type: "en-fr" },
-                { french: "Grenier", english: "Attic", type: "fr-en" },
-                { french: "Garage", english: "Garage", type: "en-fr" },
-                { french: "Jardin", english: "Garden", type: "fr-en" },
-                { french: "Yard", english: "Cour", type: "en-fr" },
-                { french: "Balcon", english: "Balcony", type: "fr-en" },
-                { french: "Table", english: "Table", type: "fr-en" },
-                { french: "Chair", english: "Chaise", type: "en-fr" },
-                { french: "Fauteuil", english: "Armchair", type: "fr-en" },
-                { french: "Sofa", english: "Canapé", type: "en-fr" },
-                { french: "Lit", english: "Bed", type: "fr-en" },
-                { french: "Mattress", english: "Matelas", type: "en-fr" },
-                { french: "Oreiller", english: "Pillow", type: "fr-en" },
-                { french: "Blanket", english: "Couverture", type: "en-fr" },
-                { french: "Miroir", english: "Mirror", type: "fr-en" },
-                { french: "Lamp", english: "Lampe", type: "en-fr" },
-                { french: "Télévision", english: "Television", type: "fr-en" },
-                { french: "Computer", english: "Ordinateur", type: "en-fr" },
-                { french: "Téléphone", english: "Phone", type: "fr-en" },
-                { french: "Radio", english: "Radio", type: "en-fr" },
-                { french: "Horloge", english: "Clock", type: "fr-en" },
-                { french: "Picture", english: "Photo", type: "en-fr" },
-                { french: "Rideau", english: "Curtain", type: "fr-en" },
-                { french: "Carpet", english: "Tapis", type: "en-fr" },
-                { french: "Door", english: "Porte", type: "en-fr" },
-                { french: "Fenêtre", english: "Window", type: "fr-en" },
-                { french: "Key", english: "Clé", type: "en-fr" },
-                
-                // Toys and games (50+ entries)
-                { french: "Jouet", english: "Toy", type: "fr-en" },
-                { french: "Doll", english: "Poupée", type: "en-fr" },
-                { french: "Ours en peluche", english: "Teddy bear", type: "fr-en" },
-                { french: "Ball", english: "Ballon", type: "en-fr" },
-                { french: "Cube", english: "Block", type: "fr-en" },
-                { french: "Lego", english: "Lego", type: "en-fr" },
-                { french: "Puzzle", english: "Puzzle", type: "fr-en" },
-                { french: "Game", english: "Jeu", type: "en-fr" },
-                { french: "Carte", english: "Card", type: "fr-en" },
-                { french: "Dice", english: "Dé", type: "en-fr" },
-                { french: "Jeu de société", english: "Board game", type: "fr-en" },
-                { french: "Video game", english: "Jeu vidéo", type: "en-fr" },
-                { french: "Console", english: "Console", type: "fr-en" },
-                { french: "Controller", english: "Manette", type: "en-fr" },
-                { french: "Voiture jouet", english: "Toy car", type: "fr-en" },
-                { french: "Train set", english: "Train miniature", type: "en-fr" },
-                { french: "Avion jouet", english: "Toy plane", type: "fr-en" },
-                { french: "Robot", english: "Robot", type: "en-fr" },
-                { french: "Figurine", english: "Action figure", type: "fr-en" },
-                { french: "Superhero", english: "Super-héros", type: "en-fr" },
-                { french: "Princesse", english: "Princess", type: "fr-en" },
-                { french: "Castle", english: "Château", type: "en-fr" }
-            ], "Flood", type: "fr-en" },
-                { french: "Hurricane", english: "Ouragan", type: "en-fr" },
-                { french: "Tornade", english: "Tornado", type: "fr-en" },
-                { french: "Blizzard", english: "Blizzard", type: "en-fr" },
-                { french: "Canicule", english: "Heat wave", type: "fr-en" },
-                { french: "Cold front", english: "Front froid", type: "en-fr" },
-                { french: "Pression", english: "Pressure", type: "fr-en" },
-                { french: "Barometer", english: "Baromètre", type: "en-fr" },
-                
-                // Basic school items (100+ entries)
-                { french: "École", english: "School", type: "fr-en" },
-                { french: "Teacher", english: "Professeur", type: "en-fr" },
-                { french: "Élève", english: "Student", type: "fr-en" },
-                { french: "Classroom", english: "Salle de classe", type: "en-fr" },
-                { french: "Bureau", english: "Desk", type: "fr-en" },
-                { french: "Chair", english: "Chaise", type: "en-fr" },
-                { french: "Tableau", english: "Blackboard", type: "fr-en" },
-                { french: "Whiteboard", english: "Tableau blanc", type: "en-fr" },
-                { french: "Livre", english: "Book", type: "fr-en" },
-                { french: "Notebook", english: "Cahier", type: "en-fr" },
-                { french: "Crayon", english: "Pencil", type: "fr-en" },
-                { french: "Pen", english: "Stylo", type: "en-fr" },
-                { french: "Gomme", english: "Eraser", type: "fr-en" },
-                { french: "Ruler", english: "Règle", type: "en-fr" },
-                { french: "Ciseaux", english: "Scissors", type: "fr-en" },
-                { french: "Glue", english: "Colle", type: "en-fr" },
-                { french: "Papier", english: "Paper", type: "fr-en" },
-                { french: "Homework", english: "Devoirs", type: "en-fr" },
-                { french: "Examen", english: "Test", type: "fr-en" },
-                { french: "Grade", english: "Note", type: "en-fr" },
-                { french: "Cours", english: "Class", type: "fr-en" },
-                { french: "Subject", english: "Matière", type: "en-fr" },
-                { french: "Mathématiques", english: "Mathematics", type: "fr-en" },
-                { french: "Science", english: "Science", type: "en-fr" },
-                { french: "Histoire", english: "History", type: "fr-en" },
-                { french: "Geography", english: "Géographie", type: "en-fr" },
-                { french: "Art", english: "Art", type: "fr-en" },
-                { french: "Music", english: "Musique", type: "en-fr" },
-                { french: "Sport", english: "Sports", type: "fr-en" },
-                { french: "English", english: "Anglais", type: "en-fr" },
-                { french: "Français", english: "French", type: "fr-en" },
-                { french: "Spanish", english: "Espagnol", type: "en-fr" },
-                { french: "Récréation", english: "Recess", type: "fr-en" },
-                { french: "Lunch", english: "Déjeuner", type: "en-fr" },
-                { french: "Sac à dos", english: "Backpack", type: "fr-en" },
-                { french: "Locker", english: "Casier", type: "en-fr" },
-                { french: "Bibliothèque", english: "Library", type: "fr-en" },
-                { french: "Computer", english: "Ordinateur", type: "en-fr" },
-                { french: "Calculatrice", english: "Calculator", type: "fr-en" },
-                { french: "Dictionary", english: "Dictionnaire", type: "en-fr" },
-                { french: "Atlas", english: "Atlas", type: "fr-en" },
-                { french: "Map", english: "Carte", type: "en-fr" },
-                { french: "Globe", english: "Globe", type: "fr-en" },
-                { french: "Calendar", english: "Calendrier", type: "en-fr" },
-                { french: "Horloge", english: "Clock", type: "fr-en" },
-                { french: "Bell", english: "Cloche", type: "en-fr" },
-                { french: "Uniforme", english: "Uniform", type: "fr-en" },
-                { french: "Playground", english: "Cour de récréation", type: "en-fr" },
-                { french: "Gymnase", english: "Gymnasium", type: "fr-en" },
-                { french: "Cafeteria", english: "Cafétéria", type: "en-fr" },
-                { french: "Principal", english: "Directeur", type: "en-fr" },
-                { french: "Infirmerie", english: "Nurse's office", type: "fr-en" },
-                { french: "Bus", english: "Bus", type: "en-fr" },
-                { french: "Couloir", english: "Hallway", type: "fr-en" },
-                { french: "Stairs", english: "Escaliers", type: "en-fr" },
-                { french: "Sortie", english: "Exit", type: "fr-en" },
-                { french: "Entrance", english: "Entrée", type: "en-fr" },
-                { french: "Fenêtre", english: "Window", type: "fr-en" },
-                { french: "Door", english: "Porte", type: "en-fr" },
-                { french: "Mur", english: "Wall", type: "fr-en" },
-                { french: "Floor", english: "Sol", type: "en-fr" },
-                { french: "Plafond", english: "Ceiling", type: "fr-en" },
-                { french: "Light", english: "Lumière", type: "en-fr" },
-                { french: "Ventilateur", english: "Fan", type: "fr-en" },
-                { french: "Heater", english: "Chauffage", type: "en-fr" },
-                { french: "Tableau d'affichage", english: "Bulletin board", type: "fr-en" },
-                { french: "Poster", english: "Affiche", type: "en-fr" },
-                { french: "Crayon de couleur", english: "Colored pencil", type: "fr-en" },
-                { french: "Marker", english: "Marqueur", type: "en-fr" },
-                { french: "Highlighter", english: "Surligneur", type: "en-fr" },
-                { french: "Agrafeuse", english: "Stapler", type: "fr-en" },
-                { french: "Hole punch", english: "Perforatrice", type: "en-fr" },
-                { french: "Classeur", english: "Binder", type: "fr-en" },
-                { french: "Folder", english: "Dossier", type: "en-fr" },
-                { french: "Feuille", english: "Sheet", type: "fr-en" },
-                { french: "Envelope", english: "Enveloppe", type: "en-fr" },
-                { french: "Timbre", english: "Stamp", type: "fr-en" },
-                { french: "Mailbox", english: "Boîte aux lettres", type: "en-fr" },
-                { french: "Télévision", english: "Television", type: "fr-en" },
-                { french: "Radio", english: "Radio", type: "en-fr" },
-                { french: "Projecteur", english: "Projector", type: "fr-en" },
-                { french: "Screen", english: "Écran", type: "en-fr" },
-                { french: "Microphone", english: "Microphone", type: "fr-en" },
-                { french: "Speaker", english: "Haut-parleur", type: "en-fr" },
-                { french: "Magnétophone", english: "Tape recorder", type: "fr-en" },
-                { french: "CD player", english: "Lecteur CD", type: "en-fr" },
-                { french: "DVD", english: "DVD", type: "fr-en" },
-                { french: "Video", english: "Vidéo", type: "en-fr" },
-                { french: "Caméra", english: "Camera", type: "fr-en" },
-                { french: "Microscope", english: "Microscope", type: "en-fr" },
-                { french: "Télescope", english: "Telescope", type: "fr-en" },
-                { french: "Magnet", english: "Aimant", type: "en-fr" },
-                { french: "Boussole", english: "Compass", type: "fr-en" },
-                { french: "Thermometer", english: "Thermomètre", type: "en-fr" },
-                { french: "Balance", english: "Scale", type: "fr-en" },
-                { french: "Measuring cup", english: "Verre doseur", type: "en-fr" },
-                { french: "Tube à essai", english: "Test tube", type: "fr-en" },
-                { french: "Beaker", english: "Bécher", type: "en-fr" },
-                { french: "Éprouvette", english: "Graduated cylinder", type: "fr-en" },
-                { french: "Funnel", english: "Entonnoir", type: "en-fr" },
-                { french: "Pipette", english: "Pipette", type: "fr-en" },
-                { french: "Bunsen burner", english: "Bec Bunsen", type: "en-fr" },
-                { french: "Lunettes de sécurité", english: "Safety goggles", type: "fr-en" },
-                { french: "Lab coat", english: "Blouse de laboratoire", type: "en-fr" },
-                { french: "Gants", english: "Gloves", type: "fr-en" },
-                { french: "First aid kit", english: "Trousse de premiers secours", type: "en-fr" },
-                { french: "Bandage", english: "Bandage", type: "fr-en" },
-                { french: "Ice pack", english: "Poche de glace", type: "en-fr" },
-                { french: "Médicament", english: "Medicine", type: "fr-en" },
-                { french: "Thermometer", english: "Thermomètre", type: "en-fr" },
-                { french: "Stéthoscope", english: "Stethoscope", type: "fr-en" },
-                { french: "Band-aid", english: "Pansement", type: "en-fr" },
-                
-                // House and home items (200+ entries)
-                { french: "Maison", english: "House", type: "fr-en" },
-                { french: "Home", english: "Foyer", type: "en-fr" },
-                { french: "Appartement", english: "Apartment", type: "fr-en" },
-                { french: "Room", english: "Chambre", type: "en-fr" },
-                { french: "Cuisine", english: "Kitchen", type: "fr-en" },
-                { french: "Living room", english: "Salon", type: "en-fr" },
-                { french: "Salle à manger", english: "Dining room", type: "fr-en" },
-                { french: "Bathroom", english: "Salle de bain", type: "en-fr" },
-                { french: "Chambre à coucher", english: "Bedroom", type: "fr-en" },
-                { french: "Basement", english: "Sous-sol", type: "en-fr" },
-                { french: "Grenier", english: "Attic", type: "fr-en" },
-                { french: "Garage", english: "Garage", type: "en-fr" },
-                { french: "Jardin", english: "Garden", type: "fr-en" },
-                { french: "Yard", english: "Cour", type: "en-fr" },
-                { french: "Balcon", english: "Balcony", type: "fr-en" },
-                { french: "Patio", english: "Patio", type: "en-fr" },
-                { french: "Terrasse", english: "Terrace", type: "fr-en" },
-                { french: "Roof", english: "Toit", type: "en-fr" },
-                { french: "Cheminée", english: "Chimney", type: "fr-en" },
-                { french: "Fireplace", english: "Cheminée", type: "en-fr" },
-                { french: "Escalier", english: "Stairs", type: "fr-en" },
-                { french: "Elevator", english: "Ascenseur", type: "en-fr" },
-                { french: "Couloir", english: "Hallway", type: "fr-en" },
-                { french: "Closet", english: "Placard", type: "en-fr" },
-                { french: "Garde-robe", english: "Wardrobe", type: "fr-en" },
-                { french: "Furniture", english: "Meubles", type: "en-fr" },
-                { french: "Table", english: "Table", type: "fr-en" },
-                { french: "Chair", english: "Chaise", type: "en-fr" },
-                { french: "Fauteuil", english: "Armchair", type: "fr-en" },
-                { french: "Sofa", english: "Canapé", type: "en-fr" },
-                { french: "Lit", english: "Bed", type: "fr-en" },
-                { french: "Mattress", english: "Matelas", type: "en-fr" },
-                { french: "Oreiller", english: "Pillow", type: "fr-en" },
-                { french: "Blanket", english: "Couverture", type: "en-fr" },
-                { french: "Drap", english: "Sheet", type: "fr-en" },
-                { french: "Comforter", english: "Couette", type: "en-fr" },
-                { french: "Armoire", english: "Wardrobe", type: "fr-en" },
-                { french: "Dresser", english: "Commode", type: "en-fr" },
-                { french: "Miroir", english: "Mirror", type: "fr-en" },
-                { french: "Lamp", english: "Lampe", type: "en-fr" },
-                { french: "Télévision", english: "Television", type: "fr-en" },
-                { french: "Computer", english: "Ordinateur", type: "en-fr" },
-                { french: "Téléphone", english: "Phone", type: "fr-en" },
-                { french: "Radio", english: "Radio", type: "en-fr" },
-                { french: "Horloge", english: "Clock", type: "fr-en" },
-                { french: "Picture", english: "Photo", type: "en-fr" },
-                { french: "Peinture", english: "Painting", type: "fr-en" },
-                { french: "Curtain", english: "Rideau", type: "en-fr" },
-                { french: "Store", english: "Blind", type: "fr-en" },
-                { french: "Carpet", english: "Tapis", type: "en-fr" },
-                { french: "Plancher", english: "Floor", type: "fr-en" },
-                { french: "Ceiling", english: "Plafond", type: "en-fr" },
-                { french: "Mur", english: "Wall", type: "fr-en" },
-                { french: "Door", english: "Porte", type: "en-fr" },
-                { french: "Fenêtre", english: "Window", type: "fr-en" },
-                { french: "Key", english: "Clé", type: "en-fr" },
-                { french: "Serrure", english: "Lock", type: "fr-en" },
-                { french: "Doorbell", english: "Sonnette", type: "en-fr" },
-                { french: "Boîte aux lettres", english: "Mailbox", type: "fr-en" },
-                { french: "Address", english: "Adresse", type: "en-fr" },
-                { french: "Numéro", english: "Number", type: "fr-en" },
-                { french: "Street", english: "Rue", type: "en-fr" },
-                { french: "Avenue", english: "Avenue", type: "fr-en" },
-                { french: "City", english: "Ville", type: "en-fr" },
-                { french: "État", english: "State", type: "fr-en" },
-                { french: "Country", english: "Pays", type: "en-fr" },
-                { french: "Code postal", english: "Zip code", type: "fr-en" },
-                { french: "Neighborhood", english: "Quartier", type: "en-fr" },
-                { french: "Voisin", english: "Neighbor", type: "fr-en" },
-                { french: "Fence", english: "Clôture", type: "en-fr" },
-                { french: "Portail", english: "Gate", type: "fr-en" },
-                { french: "Driveway", english: "Allée", type: "en-fr" },
-                { french: "Trottoir", english: "Sidewalk", type: "fr-en" },
-                { french: "Lawn", english: "Pelouse", type: "en-fr" },
-                { french: "Arbre", english: "Tree", type: "fr-en" },
-                { french: "Flower", english: "Fleur", type: "en-fr" },
-                { french: "Plante", english: "Plant", type: "fr-en" },
-                { french: "Bush", english: "Buisson", type: "en-fr" },
-                { french: "Herbe", english: "Grass", type: "fr-en" },
-                { french: "Leaf", english: "Feuille", type: "en-fr" },
-                { french: "Branche", english: "Branch", type: "fr-en" },
-                { french: "Root", english: "Racine", type: "en-fr" },
-                { french: "Graine", english: "Seed", type: "fr-en" },
-                { french: "Soil", english: "Terre", type: "en-fr" },
-                { french: "Pot", english: "Pot", type: "fr-en" },
-                { french: "Watering can", english: "Arrosoir", type: "en-fr" },
-                { french: "Tuyau d'arrosage", english: "Hose", type: "fr-en" },
-                { french: "Shovel", english: "Pelle", type: "en-fr" },
-                { french: "Râteau", english: "Rake", type: "fr-en" },
-                { french: "Lawnmower", english: "Tondeuse", type: "en-fr" },
-                { french: "Sécateur", english: "Pruning shears", type: "fr-en" },
-                { french: "Gloves", english: "Gants", type: "en-fr" },
-                { french: "Genouillères", english: "Knee pads", type: "fr-en" },
-                { french: "Wheelbarrow", english: "Brouette", type: "en-fr" },
-                { french: "Compost", english: "Compost", type: "fr-en" },
-                { french: "Fertilizer", english: "Engrais", type: "en-fr" },
-                { french: "Pesticide", english: "Pesticide", type: "fr-en" },
-                { french: "Sprinkler", english: "Arroseur", type: "en-fr" },
-                { french: "Barbecue", english: "Barbecue", type: "fr-en" },
-                { french: "Picnic table", english: "Table de pique-nique", type: "en-fr" },
-                { french: "Parasol", english: "Umbrella", type: "fr-en" },
-                { french: "Swimming pool", english: "Piscine", type: "en-fr" },
-                { french: "Jacuzzi", english: "Jacuzzi", type: "fr-en" },
-                { french: "Slide", english: "Toboggan", type: "en-fr" },
-                { french: "Balançoire", english: "Swing", type: "fr-en" },
-                { french: "Sandbox", english: "Bac à sable", type: "en-fr" },
-                { french: "Trampoline", english: "Trampoline", type: "fr-en" },
-                { french: "Hammock", english: "Hamac", type: "en-fr" },
-                { french: "Chaise longue", english: "Lounge chair", type: "fr-en" },
-                { french: "Fire pit", english: "Foyer extérieur", type: "en-fr" },
-                { french: "Shed", english: "Remise", type: "en-fr" },
-                { french: "Greenhouse", english: "Serre", type: "en-fr" },
-                { french: "Bird house", english: "Nichoir", type: "en-fr" },
-                { french: "Bird bath", english: "Bain d'oiseaux", type: "en-fr" },
-                { french: "Weather vane", english: "Girouette", type: "en-fr" },
-                { french: "Solar panel", english: "Panneau solaire", type: "en-fr" },
-                { french: "Antenna", english: "Antenne", type: "en-fr" },
-                { french: "Satellite dish", english: "Antenne parabolique", type: "en-fr" },
-                
-                // Toys and games (100+ entries)
-                { french: "Jouet", english: "Toy", type: "fr-en" },
-                { french: "Doll", english: "Poupée", type: "en-fr" },
-                { french: "Ours en peluche", english: "Teddy bear", type: "fr-en" },
-                { french: "Ball", english: "Ballon", type: "en-fr" },
-                { french: "Cube", english: "Block", type: "fr-en" },
-                { french: "Lego", english: "Lego", type: "en-fr" },
-                { french: "Puzzle", english: "Puzzle", type: "fr-en" },
-                { french: "Game", english: "Jeu", type: "en-fr" },
-                { french: "Carte", english: "Card", type: "fr-en" },
-                { french: "Dice", english: "Dé", type: "en-fr" },
-                { french: "Jeu de société", english: "Board game", type: "fr-en" },
-                { french: "Video game", english: "Jeu vidéo", type: "en-fr" },
-                { french: "Console", english: "Console", type: "fr-en" },
-                { french: "Controller", english: "Manette", type: "en-fr" },
-                { french: "Voiture jouet", english: "Toy car", type: "fr-en" },
-                { french: "Train set", english: "Train miniature", type: "en-fr" },
-                { french: "Avion jouet", english: "Toy plane", type: "fr-en" },
-                { french: "Robot", english: "Robot", type: "en-fr" },
-                { french: "Figurine", english: "Action figure", type: "fr-en" },
-                { french: "Superhero", english: "Super-héros", type: "en-fr" },
-                { french: "Princesse", english: "Princess", type: "fr-en" },
-                { french: "Castle", english: "Château", type: "en-fr" },
-                { french: "Ferme jouet", english: "Toy farm", type: "fr-en" },
-                { french: "Dollhouse", english: "Maison de poupée", type: "en-fr" },
-                { french: "Cuisine jouet", english: "Play kitchen", type: "fr-en" },
-                { french: "Tool set", english: "Boîte à outils jouet", type: "en-fr" },
-                { french: "Instruments de musique", english: "Musical instruments", type: "fr-en" },
-                { french: "Piano", english: "Piano", type: "en-fr" },
-                { french: "Guitare", english: "Guitar", type: "fr-en" },
-                { french: "Drum", english: "Tambour", type: "en-fr" },
-                { french: "Flûte", english: "Flute", type: "fr-en" },
-                { french: "Trumpet", english: "Trompette", type: "en-fr" },
-                { french: "Violon", english: "Violin", type: "fr-en" },
-                { french: "Harmonica", english: "Harmonica", type: "en-fr" },
-                { french: "Xylophone", english: "Xylophone", type: "fr-en" },
-                { french: "Maracas", english: "Maracas", type: "en-fr" },
-                { french: "Triangle", english: "Triangle", type: "fr-en" },
-                { french: "Cymbals", english: "Cymbales", type: "en-fr" },
-                { french: "Baguettes", english: "Drumsticks", type: "fr-en" },
-                { french: "Microphone", english: "Microphone", type: "en-fr" },
-                { french: "Haut-parleur", english: "Speaker", type: "fr-en" },
-                { french: "Headphones", english: "Casque", type: "en-fr" },
-                { french: "Radio", english: "Radio", type: "fr-en" },
-                { french: "CD", english: "CD", type: "en-fr" },
-                { french: "MP3", english: "MP3", type: "fr-en" },
-                { french: "Dancing", english: "Danse", type: "en-fr" },
-                { french: "Chant", english: "Singing", type: "fr-en" },
-                { french: "Performance", english: "Spectacle", type: "en-fr" },
-                { french: "Art", english: "Art", type: "fr-en" },
-                { french: "Drawing", english: "Dessin", type: "en-fr" },
-                { french: "Peinture", english: "Painting", type: "fr-en" },
-                { french: "Brush", english: "Pinceau", type: "en-fr" },
-                ]
+                { french: "Printemps", english: "Spring", type: "fr-en" },
+                { french: "Summer", english: "Été", type: "en-fr" },
+                { french: "Automne", english: "Fall", type: "fr-en" },
+                { french: "Winter", english: "Hiver", type: "en-fr" },
+                { french: "Température", english: "Temperature", type: "fr-en" },
+                { french: "Degrees", english: "Degrés", type: "en-fr" },
+                { french: "Gel", english: "Frost", type: "fr-en" },
+                { french: "Thunder", english: "Tonnerre", type: "en-fr" },
+                { french: "Éclair", english: "Lightning", type: "fr-en" },
+                { french: "Rainbow", english: "Arc-en-ciel", type: "en-fr" },
+                { french: "Grêle", english: "Hail", type: "fr-en" },
+                { french: "Drizzle", english: "Bruine", type: "en-fr" },
+
+                // Basic verbs (50 entries)
+                { french: "Être", english: "To be", type: "fr-en" },
+                { french: "To have", english: "Avoir", type: "en-fr" },
+                { french: "Aller", english: "To go", type: "fr-en" },
+                { french: "To come", english: "Venir", type: "en-fr" },
+                { french: "Faire", english: "To do", type: "fr-en" },
+                { french: "To see", english: "Voir", type: "en-fr" },
+                { french: "Dire", english: "To say", type: "fr-en" },
+                { french: "To give", english: "Donner", type: "en-fr" },
+                { french: "Prendre", english: "To take", type: "fr-en" },
+                { french: "To eat", english: "Manger", type: "en-fr" },
+                { french: "Boire", english: "To drink", type: "fr-en" },
+                { french: "To sleep", english: "Dormir", type: "en-fr" },
+                { french: "Courir", english: "To run", type: "fr-en" },
+                { french: "To walk", english: "Marcher", type: "en-fr" },
+                { french: "Jouer", english: "To play", type: "fr-en" },
+                { french: "To work", english: "Travailler", type: "en-fr" },
+                { french: "Étudier", english: "To study", type: "fr-en" },
+                { french: "To read", english: "Lire", type: "en-fr" },
+                { french: "Écrire", english: "To write", type: "fr-en" },
+                { french: "To listen", english: "Écouter", type: "en-fr" },
+                { french: "Parler", english: "To speak", type: "fr-en" },
+                { french: "To think", english: "Penser", type: "en-fr" },
+                { french: "Savoir", english: "To know", type: "fr-en" },
+                { french: "To learn", english: "Apprendre", type: "en-fr" },
+                { french: "Comprendre", english: "To understand", type: "fr-en" },
+                { french: "To help", english: "Aider", type: "en-fr" },
+                { french: "Aimer", english: "To like", type: "fr-en" },
+                { french: "To love", english: "Aimer", type: "en-fr" },
+                { french: "Détester", english: "To hate", type: "fr-en" },
+                { french: "To want", english: "Vouloir", type: "en-fr" },
+                { french: "Pouvoir", english: "To be able", type: "fr-en" },
+                { french: "To must", english: "Devoir", type: "en-fr" },
+                { french: "Ouvrir", english: "To open", type: "fr-en" },
+                { french: "To close", english: "Fermer", type: "en-fr" },
+                { french: "Regarder", english: "To look", type: "fr-en" },
+                { french: "To find", english: "Trouver", type: "en-fr" },
+                { french: "Chercher", english: "To search", type: "fr-en" },
+                { french: "To lose", english: "Perdre", type: "en-fr" },
+                { french: "Gagner", english: "To win", type: "fr-en" },
+                { french: "To buy", english: "Acheter", type: "en-fr" },
+                { french: "Vendre", english: "To sell", type: "fr-en" },
+                { french: "To cook", english: "Cuisiner", type: "en-fr" },
+                { french: "Nettoyer", english: "To clean", type: "fr-en" },
+                { french: "To wash", english: "Laver", type: "en-fr" },
+                { french: "Porter", english: "To wear", type: "fr-en" },
+                { french: "To dance", english: "Danser", type: "en-fr" },
+                { french: "Chanter", english: "To sing", type: "fr-en" },
+                { french: "To swim", english: "Nager", type: "en-fr" },
+                { french: "Voler", english: "To fly", type: "fr-en" },
+                { french: "To drive", english: "Conduire", type: "en-fr" }
+            ],
+            
+            medium: [
+                // Family relationships and descriptions (50 entries)
+                { french: "J'ai une grande famille", english: "I have a big family", type: "fr-en" },
+                { french: "My sister is very kind", english: "Ma sœur est très gentille", type: "en-fr" },
+                { french: "Mon frère joue au football", english: "My brother plays football", type: "fr-en" },
+                { french: "My parents work hard", english: "Mes parents travaillent dur", type: "en-fr" },
+                { french: "Grand-mère fait des gâteaux", english: "Grandmother makes cakes", type: "fr-en" },
+                { french: "My grandfather reads books", english: "Mon grand-père lit des livres", type: "en-fr" },
+                { french: "Ma cousine habite loin", english: "My cousin lives far away", type: "fr-en" },
+                { french: "My uncle is a doctor", english: "Mon oncle est médecin", type: "en-fr" },
+                { french: "Ma tante enseigne à l'école", english: "My aunt teaches at school", type: "fr-en" },
+                { french: "The baby sleeps all day", english: "Le bébé dort toute la journée", type: "en-fr" },
+                { french: "Mes grands-parents sont âgés", english: "My grandparents are old", type: "fr-en" },
+                { french: "My family loves to travel", english: "Ma famille aime voyager", type: "en-fr" },
+                { french: "Nous mangeons ensemble le dimanche", english: "We eat together on Sunday", type: "fr-en" },
+                { french: "My mother cooks delicious meals", english: "Ma mère cuisine de délicieux repas", type: "en-fr" },
+                { french: "Mon père répare la voiture", english: "My father repairs the car", type: "fr-en" },
+                { french: "My sister studies medicine", english: "Ma sœur étudie la médecine", type: "en-fr" },
+                { french: "Mon frère joue de la guitare", english: "My brother plays guitar", type: "fr-en" },
+                { french: "My family goes to church", english: "Ma famille va à l'église", type: "en-fr" },
+                { french: "Nous regardons la télé ensemble", english: "We watch TV together", type: "fr-en" },
+                { french: "My dog is part of the family", english: "Mon chien fait partie de la famille", type: "en-fr" },
+                { french: "Ma famille aime les vacances", english: "My family loves vacations", type: "fr-en" },
+                { french: "We celebrate birthdays together", english: "Nous célébrons les anniversaires ensemble", type: "en-fr" },
+                { french: "Mon cousin collectionne les timbres", english: "My cousin collects stamps", type: "fr-en" },
+                { french: "My niece is very smart", english: "Ma nièce est très intelligente", type: "en-fr" },
+                { french: "Mon neveu apprend à lire", english: "My nephew is learning to read", type: "fr-en" },
+                { french: "My family has many traditions", english: "Ma famille a beaucoup de traditions", type: "en-fr" },
+                { french: "Mes parents sont mariés depuis vingt ans", english: "My parents have been married for twenty years", type: "fr-en" },
+                { french: "My sister helps with homework", english: "Ma sœur aide avec les devoirs", type: "en-fr" },
+                { french: "Mon frère est plus âgé que moi", english: "My brother is older than me", type: "fr-en" },
+                { french: "My youngest sister likes dolls", english: "Ma plus jeune sœur aime les poupées", type: "en-fr" },
+                { french: "Nous avons un chat et un chien", english: "We have a cat and a dog", type: "fr-en" },
+                { french: "My family speaks two languages", english: "Ma famille parle deux langues", type: "en-fr" },
+                { french: "Grand-père raconte des histoires", english: "Grandfather tells stories", type: "fr-en" },
+                { french: "My grandmother knits sweaters", english: "Ma grand-mère tricote des pulls", type: "en-fr" },
+                { french: "Ma famille aime faire du sport", english: "My family likes to play sports", type: "fr-en" },
+                { french: "We have dinner at six o'clock", english: "Nous dînons à six heures", type: "en-fr" },
+                { french: "Mon père travaille dans un bureau", english: "My father works in an office", type: "fr-en" },
+                { french: "My mother works at the hospital", english: "Ma mère travaille à l'hôpital", type: "en-fr" },
+                { french: "Ma sœur étudie à l'université", english: "My sister studies at university", type: "fr-en" },
+                { french: "My brother lives in another city", english: "Mon frère habite dans une autre ville", type: "en-fr" },
+                { french: "Mes parents sont très fiers de nous", english: "My parents are very proud of us", type: "fr-en" },
+                { french: "My family supports each other", english: "Ma famille se soutient mutuellement", type: "en-fr" },
+                { french: "Nous aimons passer du temps ensemble", english: "We love spending time together", type: "fr-en" },
+                { french: "My family goes to the beach", english: "Ma famille va à la plage", type: "en-fr" },
+                { french: "Mes cousins visitent chaque été", english: "My cousins visit every summer", type: "fr-en" },
+                { french: "My family has many photos", english: "Ma famille a beaucoup de photos", type: "en-fr" },
+                { french: "Nous organisons des barbecues", english: "We organize barbecues", type: "fr-en" },
+                { french: "My family loves music", english: "Ma famille aime la musique", type: "en-fr" },
+                { french: "Ma grand-mère jardine tous les jours", english: "My grandmother gardens every day", type: "fr-en" },
+                { french: "My family prays before meals", english: "Ma famille prie avant les repas", type: "en-fr" },
+
+                // Daily activities and routines (50 entries)
+                { french: "Je me réveille à sept heures", english: "I wake up at seven o'clock", type: "fr-en" },
+                { french: "I brush my teeth every morning", english: "Je me brosse les dents chaque matin", type: "en-fr" },
+                { french: "Je prends une douche froide", english: "I take a cold shower", type: "fr-en" },
+                { french: "I eat breakfast with my family", english: "Je mange le petit déjeuner avec ma famille", type: "en-fr" },
+                { french: "Je vais à l'école en bus", english: "I go to school by bus", type: "fr-en" },
+                { french: "I study math in the morning", english: "J'étudie les maths le matin", type: "en-fr" },
+                { french: "Je déjeune à la cantine", english: "I eat lunch at the cafeteria", type: "fr-en" },
+                { french: "I play with friends at recess", english: "Je joue avec des amis à la récréation", type: "en-fr" },
+                { french: "Je rentre à la maison à trois heures", english: "I come home at three o'clock", type: "fr-en" },
+                { french: "I do my homework after school", english: "Je fais mes devoirs après l'école", type: "en-fr" },
+                { french: "Je regarde la télé le soir", english: "I watch TV in the evening", type: "fr-en" },
+                { french: "I help my mother cook dinner", english: "J'aide ma mère à préparer le dîner", type: "en-fr" },
+                { french: "Je me couche à neuf heures", english: "I go to bed at nine o'clock", type: "fr-en" },
+                { french: "I read a book before sleeping", english: "Je lis un livre avant de dormir", type: "en-fr" },
+                { french: "Je rêve de belles choses", english: "I dream of beautiful things", type: "fr-en" },
+                { french: "I wake up early on weekends", english: "Je me réveille tôt le week-end", type: "en-fr" },
+                { french: "Je nettoie ma chambre le samedi", english: "I clean my room on Saturday", type: "fr-en" },
+                { french: "I visit my grandparents on Sunday", english: "Je rends visite à mes grands-parents le dimanche", type: "en-fr" },
+                { french: "Je joue au parc avec mes amis", english: "I play at the park with my friends", type: "fr-en" },
+                { french: "I like to draw pictures", english: "J'aime dessiner des images", type: "en-fr" },
+                { french: "Je collectionne des autocollants", english: "I collect stickers", type: "fr-en" },
+                { french: "I practice piano every day", english: "Je pratique le piano tous les jours", type: "en-fr" },
+                { french: "Je fais du vélo après l'école", english: "I ride my bike after school", type: "fr-en" },
+                { french: "I walk my dog in the morning", english: "Je promène mon chien le matin", type: "en-fr" },
+                { french: "Je nourris mon poisson rouge", english: "I feed my goldfish", type: "fr-en" },
+                { french: "I water the plants in the garden", english: "J'arrose les plantes dans le jardin", type: "en-fr" },
+                { french: "Je range mes jouets avant de dormir", english: "I put away my toys before sleeping", type: "fr-en" },
+                { french: "I set the table for dinner", english: "Je mets la table pour le dîner", type: "en-fr" },
+                { french: "Je lave la vaisselle avec maman", english: "I wash dishes with mom", type: "fr-en" },
+                { french: "I take out the trash", english: "Je sors les poubelles", type: "en-fr" },
+                { french: "Je plie mes vêtements propres", english: "I fold my clean clothes", type: "fr-en" },
+                { french: "I make my bed every morning", english: "Je fais mon lit chaque matin", type: "en-fr" },
+                { french: "Je prépare mon sac d'école", english: "I prepare my school bag", type: "fr-en" },
+                { french: "I choose my clothes for tomorrow", english: "Je choisis mes vêtements pour demain", type: "en-fr" },
+                { french: "Je vérifie mes devoirs", english: "I check my homework", type: "fr-en" },
+                { french: "I call my grandmother", english: "J'appelle ma grand-mère", type: "en-fr" },
+                { french: "Je écris dans mon journal", english: "I write in my diary", type: "fr-en" },
+                { french: "I listen to music while studying", english: "J'écoute de la musique en étudiant", type: "en-fr" },
+                { french: "Je prends des photos avec mon appareil", english: "I take photos with my camera", type: "fr-en" },
+                { french: "I learn new words every day", english: "J'apprends de nouveaux mots chaque jour", type: "en-fr" },
+                { french: "Je dessine des cartes pour mes amis", english: "I draw cards for my friends", type: "fr-en" },
+                { french: "I bake cookies with my mom", english: "Je fais des biscuits avec ma mère", type: "en-fr" },
+                { french: "Je construis des châteaux de sable", english: "I build sand castles", type: "fr-en" },
+                { french: "I pick flowers in the garden", english: "Je cueille des fleurs dans le jardin", type: "en-fr" },
+                { french: "Je compte les étoiles la nuit", english: "I count stars at night", type: "fr-en" },
+                { french: "I watch the sunrise", english: "Je regarde le lever du soleil", type: "en-fr" },
+                { french: "Je écoute les oiseaux chanter", english: "I listen to birds singing", type: "fr-en" },
+                { french: "I enjoy rainy days", english: "J'aime les jours de pluie", type: "en-fr" },
+                { french: "Je cours sous la pluie", english: "I run in the rain", type: "fr-en" },
+                { french: "I jump in puddles", english: "Je saute dans les flaques", type: "en-fr" },
+
+                // School and learning (50 entries)
+                { french: "J'aime aller à l'école", english: "I like going to school", type: "fr-en" },
+                { french: "My teacher is very nice", english: "Mon professeur est très gentil", type: "en-fr" },
+                { french: "Je étudie les mathématiques", english: "I study mathematics", type: "fr-en" },
+                { french: "French is my favorite subject", english: "Le français est ma matière préférée", type: "en-fr" },
+                { french: "Je lis des livres d'histoire", english: "I read history books", type: "fr-en" },
+                { french: "Science class is very interesting", english: "Le cours de sciences est très intéressant", type: "en-fr" },
+                { french: "Je dessine en cours d'art", english: "I draw in art class", type: "fr-en" },
+                { french: "Music class is on Tuesday", english: "Le cours de musique est le mardi", type: "en-fr" },
+                { french: "Je joue au football à la récréation", english: "I play football at recess", type: "fr-en" },
+                { french: "The library has many books", english: "La bibliothèque a beaucoup de livres", type: "en-fr" },
+                { french: "Je emprunte des livres chaque semaine", english: "I borrow books every week", type: "fr-en" },
+                { french: "My classroom is on the second floor", english: "Ma salle de classe est au deuxième étage", type: "en-fr" },
+                { french: "Je mange à la cantine scolaire", english: "I eat in the school cafeteria", type: "fr-en" },
+                { french: "My friends and I study together", english: "Mes amis et moi étudions ensemble", type: "en-fr" },
+                { french: "Je fais mes devoirs après l'école", english: "I do my homework after school", type: "fr-en" },
+                { french: "The school has a big playground", english: "L'école a une grande cour de récréation", type: "en-fr" },
+                { french: "Je participe aux activités sportives", english: "I participate in sports activities", type: "fr-en" },
+                { french: "The school bus comes at eight", english: "Le bus scolaire arrive à huit heures", type: "en-fr" },
+                { french: "Je porte un uniforme scolaire", english: "I wear a school uniform", type: "fr-en" },
+                { french: "My backpack is very heavy", english: "Mon sac à dos est très lourd", type: "en-fr" },
+                { french: "Je écris avec un stylo bleu", english: "I write with a blue pen", type: "fr-en" },
+                { french: "The blackboard is green", english: "Le tableau est vert", type: "en-fr" },
+                { french: "Je lève la main pour répondre", english: "I raise my hand to answer", type: "fr-en" },
+                { french: "The principal is very strict", english: "Le directeur est très strict", type: "en-fr" },
+                { french: "Je participe au club de lecture", english: "I participate in the reading club", type: "fr-en" },
+                { french: "We have exams next week", english: "Nous avons des examens la semaine prochaine", type: "en-fr" },
+                { french: "Je étudie pour le test de demain", english: "I study for tomorrow's test", type: "fr-en" },
+                { french: "My grades are very good", english: "Mes notes sont très bonnes", type: "en-fr" },
+                { french: "Je aide mes camarades de classe", english: "I help my classmates", type: "fr-en" },
+                { french: "The computer class is fun", english: "Le cours d'informatique est amusant", type: "en-fr" },
+                { french: "Je apprends à taper à l'ordinateur", english: "I learn to type on the computer", type: "fr-en" },
+                { french: "We have a science project", english: "Nous avons un projet de sciences", type: "en-fr" },
+                { french: "Je présente devant la classe", english: "I present in front of the class", type: "fr-en" },
+                { french: "The school year ends in June", english: "L'année scolaire se termine en juin", type: "en-fr" },
+                { french: "Je ai hâte aux vacances d'été", english: "I'm excited for summer vacation", type: "fr-en" },
+                { french: "We learn about different countries", english: "Nous apprenons sur différents pays", type: "en-fr" },
+                { french: "Je étudie la géographie du monde", english: "I study world geography", type: "fr-en" },
+                { french: "English is an important language", english: "L'anglais est une langue importante", type: "en-fr" },
+                { french: "Je pratique l'écriture cursive", english: "I practice cursive writing", type: "fr-en" },
+                { french: "The school has a beautiful garden", english: "L'école a un beau jardin", type: "en-fr" },
+                { french: "Je plante des fleurs avec ma classe", english: "I plant flowers with my class", type: "fr-en" },
+                { french: "We learn about the environment", english: "Nous apprenons sur l'environnement", type: "en-fr" },
+                { french: "Je recycle le papier et le plastique", english: "I recycle paper and plastic", type: "fr-en" },
+                { french: "The school nurse is very kind", english: "L'infirmière scolaire est très gentille", type: "en-fr" },
+                { french: "Je vais à l'infirmerie quand je suis malade", english: "I go to the nurse when I'm sick", type: "fr-en" },
+                { french: "We have a school assembly", english: "Nous avons une assemblée scolaire", type: "en-fr" },
+                { french: "Je chante dans le chœur de l'école", english: "I sing in the school choir", type: "fr-en" },
+                { french: "The school play is next month", english: "La pièce de l'école est le mois prochain", type: "en-fr" },
+                { french: "Je mémorise mes répliques", english: "I memorize my lines", type: "fr-en" },
+                { french: "My parents come to school events", english: "Mes parents viennent aux événements scolaires", type: "en-fr" },
+
+                // Hobbies and interests (50 entries)
+                { french: "J'aime jouer aux jeux vidéo", english: "I like playing video games", type: "fr-en" },
+                { french: "Reading is my favorite hobby", english: "La lecture est mon hobby préféré", type: "en-fr" },
+                { french: "Je collectionne des cartes de baseball", english: "I collect baseball cards", type: "fr-en" },
+                { french: "I enjoy painting landscapes", english: "J'aime peindre des paysages", type: "en-fr" },
+                { french: "Je joue de la guitare acoustique", english: "I play acoustic guitar", type: "fr-en" },
+                { french: "Dancing makes me happy", english: "Danser me rend heureux", type: "en-fr" },
+                { french: "Je construis des modèles réduits", english: "I build model airplanes", type: "fr-en" },
+                { french: "Cooking is a useful skill", english: "Cuisiner est une compétence utile", type: "en-fr" },
+                { french: "Je fais du jardinage avec grand-mère", english: "I do gardening with grandmother", type: "fr-en" },
+                { french: "Photography captures memories", english: "La photographie capture les souvenirs", type: "en-fr" },
+                { french: "Je écris des histoires courtes", english: "I write short stories", type: "fr-en" },
+                { french: "Hiking in the mountains is fun", english: "Faire de la randonnée en montagne est amusant", type: "en-fr" },
+                { french: "Je nage dans la piscine locale", english: "I swim in the local pool", type: "fr-en" },
+                { french: "Chess requires strategic thinking", english: "Les échecs demandent une réflexion stratégique", type: "en-fr" },
+                { french: "Je apprends à jouer au tennis", english: "I'm learning to play tennis", type: "fr-en" },
+                { french: "Knitting is a relaxing activity", english: "Tricoter est une activité relaxante", type: "en-fr" },
+                { french: "Je assemble des puzzles de mille pièces", english: "I assemble thousand-piece puzzles", type: "fr-en" },
+                { french: "Bird watching requires patience", english: "Observer les oiseaux demande de la patience", type: "en-fr" },
+                { french: "Je cultive des tomates dans le jardin", english: "I grow tomatoes in the garden", type: "fr-en" },
+                { french: "Skateboarding is exciting", english: "Faire du skateboard est excitant", type: "en-fr" },
+                { french: "Je apprends à coudre des vêtements", english: "I'm learning to sew clothes", type: "fr-en" },
+                { french: "Rock climbing builds strength", english: "L'escalade développe la force", type: "en-fr" },
+                { french: "Je collectionne des coquillages à la plage", english: "I collect seashells at the beach", type: "fr-en" },
+                { french: "Astronomy fascinates me", english: "L'astronomie me fascine", type: "en-fr" },
+                { french: "Je construis des robots avec des Legos", english: "I build robots with Legos", type: "fr-en" },
+                { french: "Martial arts teach discipline", english: "Les arts martiaux enseignent la discipline", type: "en-fr" },
+                { french: "Je apprends la calligraphie japonaise", english: "I'm learning Japanese calligraphy", type: "fr-en" },
+                { french: "Origami is the art of paper folding", english: "L'origami est l'art du pliage de papier", type: "en-fr" },
+                { french: "Je joue aux échecs en ligne", english: "I play chess online", type: "fr-en" },
+                { french: "Camping under stars is magical", english: "Camper sous les étoiles est magique", type: "en-fr" },
+                { french: "Je apprends des langues étrangères", english: "I learn foreign languages", type: "fr-en" },
+                { french: "Volunteer work helps the community", english: "Le bénévolat aide la communauté", type: "en-fr" },
+                { french: "Je répare des vélos cassés", english: "I repair broken bicycles", type: "fr-en" },
+                { french: "Meditation brings inner peace", english: "La méditation apporte la paix intérieure", type: "en-fr" },
+                { french: "Je apprends la programmation informatique", english: "I'm learning computer programming", type: "fr-en" },
+                { french: "Theater acting is creative", english: "Jouer au théâtre est créatif", type: "en-fr" },
+                { french: "Je écris de la poésie romantique", english: "I write romantic poetry", type: "fr-en" },
+                { french: "Metal detecting finds treasures", english: "La détection de métaux trouve des trésors", type: "en-fr" },
+                { french: "Je apprends l'art de la poterie", english: "I'm learning pottery art", type: "fr-en" },
+                { french: "Geocaching is modern treasure hunting", english: "Le géocaching est une chasse au trésor moderne", type: "en-fr" },
+                { french: "Je cultive des herbes aromatiques", english: "I grow aromatic herbs", type: "fr-en" },
+                { french: "Magic tricks amaze people", english: "Les tours de magie émerveillent les gens", type: "en-fr" },
+                { french: "Je apprends à jongler avec trois balles", english: "I'm learning to juggle three balls", type: "fr-en" },
+                { french: "Stamp collecting preserves history", english: "Collectionner les timbres préserve l'histoire", type: "en-fr" },
+                { french: "Je dessine des bandes dessinées", english: "I draw comic strips", type: "fr-en" },
+                { french: "Beekeeping produces honey", english: "L'apiculture produit du miel", type: "en-fr" },
+                { french: "Je apprends à faire du pain", english: "I'm learning to make bread", type: "fr-en" },
+                { french: "Stone carving is ancient art", english: "La sculpture sur pierre est un art ancien", type: "en-fr" },
+                { french: "Je collectionne des fossiles anciens", english: "I collect ancient fossils", type: "fr-en" },
+                { french: "Glass blowing creates beauty", english: "Le soufflage de verre crée de la beauté", type: "en-fr" },
+
+                // Food and cooking (50 entries)
+                { french: "J'aime cuisiner avec ma mère", english: "I like cooking with my mother", type: "fr-en" },
+                { french: "Fresh vegetables taste better", english: "Les légumes frais ont meilleur goût", type: "en-fr" },
+                { french: "Je prépare une salade colorée", english: "I prepare a colorful salad", type: "fr-en" },
+                { french: "Homemade bread smells wonderful", english: "Le pain fait maison sent merveilleux", type: "en-fr" },
+                { french: "Je épluche les pommes de terre", english: "I peel the potatoes", type: "fr-en" },
+                { french: "Spices make food more flavorful", english: "Les épices rendent la nourriture plus savoureuse", type: "en-fr" },
+                { french: "Je mélange les ingrédients soigneusement", english: "I mix the ingredients carefully", type: "fr-en" },
+                { french: "Chocolate cake is my favorite dessert", english: "Le gâteau au chocolat est mon dessert préféré", type: "en-fr" },
+                { french: "Je bats les œufs pour l'omelette", english: "I beat the eggs for the omelet", type: "fr-en" },
+                { french: "Fresh fruit provides vitamins", english: "Les fruits frais fournissent des vitamines", type: "en-fr" },
+                { french: "Je prépare le petit déjeuner dimanche", english: "I prepare breakfast on Sunday", type: "fr-en" },
+                { french: "Soup warms the soul", english: "La soupe réchauffe l'âme", type: "en-fr" },
+                { french: "Je coupe les légumes en petits morceaux", english: "I cut vegetables into small pieces", type: "fr-en" },
+                { french: "Grilled chicken is healthy", english: "Le poulet grillé est sain", type: "en-fr" },
+                { french: "Je goûte la sauce avant de servir", english: "I taste the sauce before serving", type: "fr-en" },
+                { french: "Ice cream melts quickly", english: "La glace fond rapidement", type: "en-fr" },
+                { french: "Je lave les fruits avant de manger", english: "I wash fruit before eating", type: "fr-en" },
+                { french: "Pasta with tomato sauce is simple", english: "Les pâtes à la sauce tomate sont simples", type: "en-fr" },
+                { french: "Je fais griller le pain au toaster", english: "I toast bread in the toaster", type: "fr-en" },
+                { french: "Fresh herbs enhance flavor", english: "Les herbes fraîches rehaussent la saveur", type: "en-fr" },
+                { french: "Je râpe le fromage pour la pizza", english: "I grate cheese for pizza", type: "fr-en" },
+                { french: "Cooking requires patience and practice", english: "Cuisiner demande patience et pratique", type: "en-fr" },
+                { french: "Je suis une recette de famille", english: "I follow a family recipe", type: "fr-en" },
+                { french: "Measuring ingredients is important", english: "Mesurer les ingrédients est important", type: "en-fr" },
+                { french: "Je précchauffe le four à deux cents degrés", english: "I preheat the oven to two hundred degrees", type: "fr-en" },
+                { french: "Salt enhances natural flavors", english: "Le sel rehausse les saveurs naturelles", type: "en-fr" },
+                { french: "Je verse l'huile dans la poêle", english: "I pour oil into the pan", type: "fr-en" },
+                { french: "Fresh bread makes great sandwiches", english: "Le pain frais fait d'excellents sandwichs", type: "en-fr" },
+                { french: "Je découpe la viande en tranches", english: "I slice the meat", type: "fr-en" },
+                { french: "Honey is a natural sweetener", english: "Le miel est un édulcorant naturel", type: "en-fr" },
+                { french: "Je mets la table pour le dîner", english: "I set the table for dinner", type: "fr-en" },
+                { french: "Eating together strengthens families", english: "Manger ensemble renforce les familles", type: "en-fr" },
+                { french: "Je nettoie la cuisine après cuisiner", english: "I clean the kitchen after cooking", type: "fr-en" },
+                { french: "Different cultures have unique cuisines", english: "Différentes cultures ont des cuisines uniques", type: "en-fr" },
+                { french: "Je apprends à faire des crêpes", english: "I'm learning to make crepes", type: "fr-en" },
+                { french: "Presentation makes food more appealing", english: "La présentation rend la nourriture plus attirante", type: "en-fr" },
+                { french: "Je garde les restes au réfrigérateur", english: "I keep leftovers in the refrigerator", type: "fr-en" },
+                { french: "Sharing meals creates memories", english: "Partager les repas crée des souvenirs", type: "en-fr" },
+                { french: "Je apprends les noms des ustensiles", english: "I learn the names of utensils", type: "fr-en" },
+                { french: "Cooking shows teach techniques", english: "Les émissions de cuisine enseignent les techniques", type: "en-fr" },
+                { french: "Je expérimente avec nouvelles saveurs", english: "I experiment with new flavors", type: "fr-en" },
+                { french: "Traditional recipes preserve culture", english: "Les recettes traditionnelles préservent la culture", type: "en-fr" },
+                { french: "Je aide grand-mère à faire des biscuits", english: "I help grandmother make cookies", type: "fr-en" },
+                { french: "Reading cookbooks inspires creativity", english: "Lire des livres de cuisine inspire la créativité", type: "en-fr" },
+                { french: "Je apprends les bases de la nutrition", english: "I learn nutrition basics", type: "fr-en" },
+                { french: "Local markets sell fresh produce", english: "Les marchés locaux vendent des produits frais", type: "en-fr" },
+                { french: "Je choisis des ingrédients de qualité", english: "I choose quality ingredients", type: "fr-en" },
+                { french: "Cooking is both art and science", english: "Cuisiner est à la fois art et science", type: "en-fr" },
+                { french: "Je développe mon palais graduellement", english: "I develop my palate gradually", type: "fr-en" },
+                { french: "Food brings people together", english: "La nourriture rassemble les gens", type: "en-fr" },
+
+                // Transportation and places (50 entries)
+                { french: "Je vais à l'école en autobus", english: "I go to school by bus", type: "fr-en" },
+                { french: "The train station is downtown", english: "La gare est au centre-ville", type: "en-fr" },
+                { french: "Mon père conduit une voiture rouge", english: "My father drives a red car", type: "fr-en" },
+                { french: "Airplanes fly very high", english: "Les avions volent très haut", type: "en-fr" },
+                { french: "Je monte à vélo au parc", english: "I ride my bike to the park", type: "fr-en" },
+                { french: "The subway is fast and convenient", english: "Le métro est rapide et pratique", type: "en-fr" },
+                { french: "Les bateaux naviguent sur la rivière", english: "Boats sail on the river", type: "fr-en" },
+                { french: "Walking is good exercise", english: "Marcher est un bon exercice", type: "en-fr" },
+                { french: "Je prends le taxi quand il pleut", english: "I take a taxi when it rains", type: "fr-en" },
+                { french: "The airport has many shops", english: "L'aéroport a beaucoup de magasins", type: "en-fr" },
+                { french: "Ma famille voyage en camping-car", english: "My family travels in an RV", type: "fr-en" },
+                { french: "Motorcycles are fast but dangerous", english: "Les motos sont rapides mais dangereuses", type: "en-fr" },
+                { french: "Je attends le bus à l'arrêt", english: "I wait for the bus at the stop", type: "fr-en" },
+                { french: "The highway connects different cities", english: "L'autoroute relie différentes villes", type: "en-fr" },
+                { french: "Les escalators montent et descendent", english: "Escalators go up and down", type: "fr-en" },
+                { french: "Traffic lights control car flow", english: "Les feux de circulation contrôlent le flux des voitures", type: "en-fr" },
+                { french: "Je traverse la rue prudemment", english: "I cross the street carefully", type: "fr-en" },
+                { french: "The bridge spans the wide river", english: "Le pont enjambe la large rivière", type: "en-fr" },
+                { french: "Les tunnels passent sous les montagnes", english: "Tunnels go under mountains", type: "fr-en" },
+                { french: "Parking lots fill up quickly", english: "Les parkings se remplissent rapidement", type: "en-fr" },
+                { french: "Je porte un casque à vélo", english: "I wear a helmet on my bike", type: "fr-en" },
+                { french: "Speed limits keep roads safe", english: "Les limitations de vitesse maintiennent la sécurité routière", type: "en-fr" },
+                { french: "Les piétons utilisent les trottoirs", english: "Pedestrians use sidewalks", type: "fr-en" },
+                { french: "Gas stations sell fuel", english: "Les stations-service vendent du carburant", type: "en-fr" },
+                { french: "Je attache ma ceinture de sécurité", english: "I fasten my seatbelt", type: "fr-en" },
+                { french: "Public transportation saves money", english: "Les transports publics économisent de l'argent", type: "en-fr" },
+                { french: "Les vélos électriques deviennent populaires", english: "Electric bikes are becoming popular", type: "fr-en" },
+                { french: "Car sharing reduces pollution", english: "Le partage de voiture réduit la pollution", type: "en-fr" },
+                { french: "Je lis les panneaux de signalisation", english: "I read traffic signs", type: "fr-en" },
+                { french: "Navigation apps help drivers", english: "Les applications de navigation aident les conducteurs", type: "en-fr" },
+                { french: "Les voitures autonomes arrivent bientôt", english: "Autonomous cars are coming soon", type: "fr-en" },
+                { french: "Public bikes are available downtown", english: "Les vélos publics sont disponibles au centre-ville", type: "en-fr" },
+                { french: "Je planifie mon itinéraire à l'avance", english: "I plan my route in advance", type: "fr-en" },
+                { french: "Rush hour traffic moves slowly", english: "La circulation aux heures de pointe avance lentement", type: "en-fr" },
+                { french: "Les transports en commun sont écologiques", english: "Public transport is ecological", type: "fr-en" },
+                { french: "Toll roads require payment", english: "Les routes à péage nécessitent un paiement", type: "en-fr" },
+                { french: "Je respecte les règles de circulation", english: "I follow traffic rules", type: "fr-en" },
+                { french: "Emergency vehicles have priority", english: "Les véhicules d'urgence ont la priorité", type: "en-fr" },
+                { french: "Les feux de détresse signalent un problème", english: "Hazard lights signal a problem", type: "fr-en" },
+                { french: "Roundabouts improve traffic flow", english: "Les ronds-points améliorent la circulation", type: "en-fr" },
+                { french: "Je vérifie les pneus régulièrement", english: "I check the tires regularly", type: "fr-en" },
+                { french: "Weather affects driving conditions", english: "Le temps affecte les conditions de conduite", type: "en-fr" },
+                { french: "Les zones scolaires ont des limites spéciales", english: "School zones have special limits", type: "fr-en" },
+                { french: "Construction zones require caution", english: "Les zones de construction nécessitent de la prudence", type: "en-fr" },
+                { french: "Je utilise les clignotants pour tourner", english: "I use turn signals to turn", type: "fr-en" },
+                { french: "Carpooling reduces traffic", english: "Le covoiturage réduit la circulation", type: "en-fr" },
+                { french: "Les voies cyclables protègent les cyclistes", english: "Bike lanes protect cyclists", type: "fr-en" },
+                { french: "Winter driving requires special tires", english: "La conduite hivernale nécessite des pneus spéciaux", type: "en-fr" },
+                { french: "Je garde une distance de sécurité", english: "I keep a safe distance", type: "fr-en" },
+                { french: "Road maintenance keeps streets safe", english: "L'entretien routier maintient la sécurité des rues", type: "en-fr" }
+            ],
+            
+            hard: [
+                // Complex daily conversations (50 entries)
+                { french: "Pourriez-vous m'indiquer le chemin vers la gare", english: "Could you show me the way to the train station", type: "fr-en" },
+                { french: "I would like to make a reservation for tonight", english: "Je voudrais faire une réservation pour ce soir", type: "en-fr" },
+                { french: "Excusez-moi, savez-vous quelle heure il est", english: "Excuse me, do you know what time it is", type: "fr-en" },
+                { french: "The weather forecast predicts rain tomorrow", english: "La météo prévoit de la pluie demain", type: "en-fr" },
+                { french: "Je ne me sens pas bien aujourd'hui", english: "I don't feel well today", type: "fr-en" },
+                { french: "Could you please speak more slowly", english: "Pourriez-vous parler plus lentement s'il vous plaît", type: "en-fr" },
+                { french: "Il me faut un médecin immédiatement", english: "I need a doctor immediately", type: "fr-en" },
+                { french: "Where can I find the nearest pharmacy", english: "Où puis-je trouver la pharmacie la plus proche", type: "en-fr" },
+                { french: "Je cherche un appartement à louer", english: "I'm looking for an apartment to rent", type: "fr-en" },
+                { french: "How much does this cost per month", english: "Combien cela coûte-t-il par mois", type: "en-fr" },
+                { french: "Avez-vous des chambres disponibles cette semaine", english: "Do you have rooms available this week", type: "fr-en" },
+                { french: "I need to exchange some foreign currency", english: "Je dois échanger de la monnaie étrangère", type: "en-fr" },
+                { french: "Où se trouve le bureau de change le plus proche", english: "Where is the nearest exchange office", type: "fr-en" },
+                { french: "Could you recommend a good restaurant nearby", english: "Pourriez-vous recommander un bon restaurant dans les environs", type: "en-fr" },
+                { french: "Je suis allergique aux fruits de mer", english: "I'm allergic to seafood", type: "fr-en" },
+                { french: "What ingredients are in this dish", english: "Quels ingrédients sont dans ce plat", type: "en-fr" },
+                { french: "L'addition s'il vous plaît", english: "The bill please", type: "fr-en" },
+                { french: "Is the service charge included", english: "Le service est-il inclus", type: "en-fr" },
+                { french: "Je voudrais annuler ma commande", english: "I would like to cancel my order", type: "fr-en" },
+                { french: "Could we have a table for four people", english: "Pourrons-nous avoir une table pour quatre personnes", type: "en-fr" },
+                { french: "À quelle heure fermez-vous ce soir", english: "What time do you close tonight", type: "fr-en" },
+                { french: "I'm sorry but I don't understand", english: "Je suis désolé mais je ne comprends pas", type: "en-fr" },
+                { french: "Pourriez-vous répéter cela s'il vous plaît", english: "Could you repeat that please", type: "fr-en" },
+                { french: "What does this word mean in English", english: "Que signifie ce mot en anglais", type: "en-fr" },
+                { french: "Je apprends le français depuis six mois", english: "I've been learning French for six months", type: "fr-en" },
+                { french: "Where did you learn to speak so well", english: "Où avez-vous appris à si bien parler", type: "en-fr" },
+                { french: "Avez-vous des suggestions pour améliorer ma prononciation", english: "Do you have suggestions to improve my pronunciation", type: "fr-en" },
+                { french: "I think there's been a misunderstanding", english: "Je pense qu'il y a eu un malentendu", type: "en-fr" },
+                { french: "Pourriez-vous m'aider avec ce problème", english: "Could you help me with this problem", type: "fr-en" },
+                { french: "I need to buy a gift for my friend", english: "Je dois acheter un cadeau pour mon ami", type: "en-fr" },
+                { french: "Combien coûte ce livre de français", english: "How much does this French book cost", type: "fr-en" },
+                { french: "Do you accept credit cards here", english: "Acceptez-vous les cartes de crédit ici", type: "en-fr" },
+                { french: "Je cherche quelque chose de moins cher", english: "I'm looking for something less expensive", type: "fr-en" },
+                { french: "Could you show me something similar", english: "Pourriez-vous me montrer quelque chose de similaire", type: "en-fr" },
+                { french: "Est-ce que vous avez ceci dans une autre couleur", english: "Do you have this in another color", type: "fr-en" },
+                { french: "I would like to return this item", english: "Je voudrais retourner cet article", type: "en-fr" },
+                { french: "Avez-vous le reçu d'achat", english: "Do you have the receipt", type: "fr-en" },
+                { french: "When is the best time to visit", english: "Quel est le meilleur moment pour visiter", type: "en-fr" },
+                { french: "Je voudrais prendre rendez-vous pour demain", english: "I would like to make an appointment for tomorrow", type: "fr-en" },
+                { french: "Is there a waiting list for this service", english: "Y a-t-il une liste d'attente pour ce service", type: "en-fr" },
+                { french: "Combien de temps faut-il pour arriver là-bas", english: "How long does it take to get there", type: "fr-en" },
+                { french: "Which bus should I take to downtown", english: "Quel bus dois-je prendre pour aller au centre-ville", type: "en-fr" },
+                { french: "À quelle fréquence passent les trains", english: "How often do the trains run", type: "fr-en" },
+                { french: "I think I'm lost, can you help me", english: "Je pense que je suis perdu, pouvez-vous m'aider", type: "en-fr" },
+                { french: "Où puis-je trouver un plan de la ville", english: "Where can I find a city map", type: "fr-en" },
+                { french: "Is this the right direction to the museum", english: "Est-ce la bonne direction pour le musée", type: "en-fr" },
+                { french: "Je cherche l'office de tourisme", english: "I'm looking for the tourist office", type: "fr-en" },
+                { french: "Could you take a photo of us please", english: "Pourriez-vous nous prendre en photo s'il vous plaît", type: "en-fr" },
+                { french: "Y a-t-il un ascenseur dans cet immeuble", english: "Is there an elevator in this building", type: "fr-en" },
+                { french: "I'm looking for someone who speaks English", english: "Je cherche quelqu'un qui parle anglais", type: "en-fr" },
+
+                // Advanced descriptions and opinions (50 entries)
+                { french: "Ce restaurant a une ambiance très chaleureuse", english: "This restaurant has a very warm atmosphere", type: "fr-en" },
+                { french: "The architecture of this building is impressive", english: "L'architecture de ce bâtiment est impressionnante", type: "en-fr" },
+                { french: "Je trouve que cette exposition est fascinante", english: "I find this exhibition fascinating", type: "fr-en" },
+                { french: "The view from here is absolutely breathtaking", english: "La vue d'ici est absolument à couper le souffle", type: "en-fr" },
+                { french: "Cette musique me rappelle mon enfance", english: "This music reminds me of my childhood", type: "fr-en" },
+                { french: "I think the quality has improved significantly", english: "Je pense que la qualité s'est considérablement améliorée", type: "en-fr" },
+                { french: "Le service client de cette entreprise est exceptionnel", english: "The customer service of this company is exceptional", type: "fr-en" },
+                { french: "This movie has a very interesting plot", english: "Ce film a une intrigue très intéressante", type: "en-fr" },
+                { french: "Je ne suis pas d'accord avec cette décision", english: "I don't agree with this decision", type: "fr-en" },
+                { french: "The weather today is perfect for a picnic", english: "Le temps aujourd'hui est parfait pour un pique-nique", type: "en-fr" },
+                { french: "Cette nouvelle technologie va changer notre vie", english: "This new technology will change our lives", type: "fr-en" },
+                { french: "I believe education is extremely important", english: "Je crois que l'éducation est extrêmement importante", type: "en-fr" },
+                { french: "Le problème est plus compliqué qu'il n'y paraît", english: "The problem is more complicated than it appears", type: "fr-en" },
+                { french: "This solution seems practical and efficient", english: "Cette solution semble pratique et efficace", type: "en-fr" },
+                { french: "Je suis impressionné par votre connaissance du sujet", english: "I'm impressed by your knowledge of the subject", type: "fr-en" },
+                { french: "The environment needs our immediate attention", english: "L'environnement a besoin de notre attention immédiate", type: "en-fr" },
+                { french: "Cette discussion est très enrichissante", english: "This discussion is very enriching", type: "fr-en" },
+                { french: "I prefer traditional methods over modern ones", english: "Je préfère les méthodes traditionnelles aux modernes", type: "en-fr" },
+                { french: "La situation économique s'améliore lentement", english: "The economic situation is slowly improving", type: "fr-en" },
+                { french: "This book offers a unique perspective", english: "Ce livre offre une perspective unique", type: "en-fr" },
+                { french: "Je pense que nous devrions chercher d'autres options", english: "I think we should look for other options", type: "fr-en" },
+                { french: "The cultural differences are quite remarkable", english: "Les différences culturelles sont assez remarquables", type: "en-fr" },
+                { french: "Cette expérience m'a beaucoup appris sur moi-même", english: "This experience taught me a lot about myself", type: "fr-en" },
+                { french: "I appreciate your patience and understanding", english: "J'apprécie votre patience et votre compréhension", type: "en-fr" },
+                { french: "Le contraste entre ces deux styles est frappant", english: "The contrast between these two styles is striking", type: "fr-en" },
+                { french: "This approach has both advantages and disadvantages", english: "Cette approche a des avantages et des inconvénients", type: "en-fr" },
+                { french: "Je suis curieux de connaître votre opinion", english: "I'm curious to know your opinion", type: "fr-en" },
+                { french: "The results exceeded our expectations", english: "Les résultats ont dépassé nos attentes", type: "en-fr" },
+                { french: "Cette innovation pourrait révolutionner l'industrie", english: "This innovation could revolutionize the industry", type: "fr-en" },
+                { french: "I find this topic particularly interesting", english: "Je trouve ce sujet particulièrement intéressant", type: "en-fr" },
+                { french: "La complexité du problème nécessite une analyse approfondie", english: "The complexity of the problem requires thorough analysis", type: "fr-en" },
+                { french: "This experience has broadened my horizons", english: "Cette expérience a élargi mes horizons", type: "en-fr" },
+                { french: "Je suis reconnaissant pour toutes les opportunités", english: "I'm grateful for all the opportunities", type: "fr-en" },
+                { french: "The diversity of opinions enriches the debate", english: "La diversité d'opinions enrichit le débat", type: "en-fr" },
+                { french: "Cette découverte ouvre de nouvelles possibilités", english: "This discovery opens new possibilities", type: "fr-en" },
+                { french: "I believe teamwork is essential for success", english: "Je crois que le travail d'équipe est essentiel au succès", type: "en-fr" },
+                { french: "L'adaptation au changement est cruciale", english: "Adaptation to change is crucial", type: "fr-en" },
+                { french: "This project requires careful planning", english: "Ce projet nécessite une planification minutieuse", type: "en-fr" },
+                { french: "Je suis optimiste quant à l'avenir", english: "I'm optimistic about the future", type: "fr-en" },
+                { french: "The balance between work and life is important", english: "L'équilibre entre travail et vie est important", type: "en-fr" },
+                { french: "Cette technique s'avère très efficace", english: "This technique proves very effective", type: "fr-en" },
+                { french: "I think communication is the key", english: "Je pense que la communication est la clé", type: "en-fr" },
+                { french: "La persévérance mène souvent au succès", english: "Perseverance often leads to success", type: "fr-en" },
+                { french: "This challenge will help us grow", english: "Ce défi nous aidera à grandir", type: "en-fr" },
+                { french: "Je suis convaincu que nous trouverons une solution", english: "I'm convinced we'll find a solution", type: "fr-en" },
+                { french: "The importance of this issue cannot be underestimated", english: "L'importance de cette question ne peut être sous-estimée", type: "en-fr" },
+                { french: "Cette approche mérite d'être explorée davantage", english: "This approach deserves further exploration", type: "fr-en" },
+                { french: "I believe in the power of positive thinking", english: "Je crois au pouvoir de la pensée positive", type: "en-fr" },
+                { french: "La créativité est essentielle dans notre travail", english: "Creativity is essential in our work", type: "fr-en" },
+                { french: "This experience has been truly transformative", english: "Cette expérience a été vraiment transformatrice", type: "en-fr" },
+
+                // Professional and academic contexts (50 entries)
+                { french: "Je travaille dans le domaine de la technologie", english: "I work in the field of technology", type: "fr-en" },
+                { french: "Could you send me the project proposal", english: "Pourriez-vous m'envoyer la proposition de projet", type: "en-fr" },
+                { french: "La réunion est prévue pour jeudi prochain", english: "The meeting is scheduled for next Thursday", type: "fr-en" },
+                { french: "I need to prepare a presentation for tomorrow", english: "Je dois préparer une présentation pour demain", type: "en-fr" },
+                { french: "Nos résultats dépassent les objectifs fixés", english: "Our results exceed the set objectives", type: "fr-en" },
+                { french: "The deadline for this project is next week", english: "La date limite pour ce projet est la semaine prochaine", type: "en-fr" },
+                { french: "Je voudrais discuter de nouvelles stratégies", english: "I would like to discuss new strategies", type: "fr-en" },
+                { french: "This research requires extensive documentation", english: "Cette recherche nécessite une documentation approfondie", type: "en-fr" },
+                { french: "L'analyse des données révèle des tendances intéressantes", english: "Data analysis reveals interesting trends", type: "fr-en" },
+                { french: "We need to improve our communication process", english: "Nous devons améliorer notre processus de communication", type: "en-fr" },
+                { french: "Le budget alloué est insuffisant pour ce projet", english: "The allocated budget is insufficient for this project", type: "fr-en" },
+                { french: "I suggest we review our current methodology", english: "Je suggère que nous révisions notre méthodologie actuelle", type: "en-fr" },
+                { french: "Cette approche innovante pourrait améliorer l'efficacité", english: "This innovative approach could improve efficiency", type: "fr-en" },
+                { french: "The market research shows promising results", english: "L'étude de marché montre des résultats prometteurs", type: "en-fr" },
+                { french: "Je recommande une formation supplémentaire pour l'équipe", english: "I recommend additional training for the team", type: "fr-en" },
+                { french: "Quality control is essential in our industry", english: "Le contrôle qualité est essentiel dans notre industrie", type: "en-fr" },
+                { french: "Les nouvelles réglementations affectent notre travail", english: "New regulations affect our work", type: "fr-en" },
+                { french: "I think we should prioritize customer satisfaction", english: "Je pense que nous devrions prioriser la satisfaction client", type: "en-fr" },
+                { french: "La collaboration internationale enrichit nos projets", english: "International collaboration enriches our projects", type: "fr-en" },
+                { french: "We need to establish clear performance indicators", english: "Nous devons établir des indicateurs de performance clairs", type: "en-fr" },
+                { french: "L'innovation est la clé de notre compétitivité", english: "Innovation is the key to our competitiveness", type: "fr-en" },
+                { french: "This solution addresses the main challenges", english: "Cette solution répond aux principaux défis", type: "en-fr" },
+                { french: "Je propose d'organiser un brainstorming créatif", english: "I propose organizing a creative brainstorming session", type: "fr-en" },
+                { french: "The implementation phase requires careful coordination", english: "La phase de mise en œuvre nécessite une coordination minutieuse", type: "en-fr" },
+                { french: "Notre département a atteint ses objectifs trimestriels", english: "Our department has achieved its quarterly objectives", type: "fr-en" },
+                { french: "I believe in continuous professional development", english: "Je crois au développement professionnel continu", type: "en-fr" },
+                { french: "La gestion du temps est cruciale pour la productivité", english: "Time management is crucial for productivity", type: "fr-en" },
+                { french: "We should consider the environmental impact", english: "Nous devrions considérer l'impact environnemental", type: "en-fr" },
+                { french: "Cette technologie révolutionnera notre secteur", english: "This technology will revolutionize our sector", type: "fr-en" },
+                { french: "I recommend conducting a thorough market analysis", english: "Je recommande de mener une analyse de marché approfondie", type: "en-fr" },
+                { french: "La formation continue améliore nos compétences", english: "Continuous training improves our skills", type: "fr-en" },
+                { french: "We need to adapt to changing market conditions", english: "Nous devons nous adapter aux conditions changeantes du marché", type: "en-fr" },
+                { french: "L'investissement dans la recherche est prioritaire", english: "Investment in research is a priority", type: "fr-en" },
+                { french: "This partnership will create new opportunities", english: "Ce partenariat créera de nouvelles opportunités", type: "en-fr" },
+                { french: "Je pense que nous devrions diversifier nos services", english: "I think we should diversify our services", type: "fr-en" },
+                { french: "The annual report shows significant progress", english: "Le rapport annuel montre des progrès significatifs", type: "en-fr" },
+                { french: "Notre équipe a une expertise reconnue internationalement", english: "Our team has internationally recognized expertise", type: "fr-en" },
+                { french: "I suggest implementing a mentorship program", english: "Je suggère de mettre en place un programme de mentorat", type: "en-fr" },
+                { french: "La communication transparente renforce la confiance", english: "Transparent communication builds trust", type: "fr-en" },
+                { french: "We should establish clear success metrics", english: "Nous devrions établir des mesures de succès claires", type: "en-fr" },
+                { french: "L'automatisation améliore l'efficacité opérationnelle", english: "Automation improves operational efficiency", type: "fr-en" },
+                { french: "I believe networking is essential for career growth", english: "Je crois que le réseautage est essentiel pour l'évolution de carrière", type: "en-fr" },
+                { french: "La planification stratégique guide nos décisions", english: "Strategic planning guides our decisions", type: "fr-en" },
+                { french: "We need to balance ambition with realistic goals", english: "Nous devons équilibrer l'ambition avec des objectifs réalistes", type: "en-fr" },
+                { french: "Cette initiative favorise l'innovation collaborative", english: "This initiative promotes collaborative innovation", type: "fr-en" },
+                { french: "I think emotional intelligence is undervalued", english: "Je pense que l'intelligence émotionnelle est sous-estimée", type: "en-fr" },
+                { french: "La diversité des perspectives enrichit la créativité", english: "Diversity of perspectives enriches creativity", type: "fr-en" },
+                { french: "We should invest in sustainable business practices", english: "Nous devrions investir dans des pratiques commerciales durables", type: "en-fr" },
+                { french: "L'adaptabilité est essentielle dans notre environnement", english: "Adaptability is essential in our environment", type: "fr-en" },
+                { french: "I recommend establishing feedback mechanisms", english: "Je recommande d'établir des mécanismes de feedback", type: "en-fr" },
+
+                // Travel and cultural experiences (50 entries)
+                { french: "J'aimerais visiter la France l'été prochain", english: "I would like to visit France next summer", type: "fr-en" },
+                { french: "The customs here are different from my country", english: "Les coutumes ici sont différentes de mon pays", type: "en-fr" },
+                { french: "Cette ville a une histoire riche et fascinante", english: "This city has a rich and fascinating history", type: "fr-en" },
+                { french: "I'm trying to learn about local traditions", english: "J'essaie d'apprendre les traditions locales", type: "en-fr" },
+                { french: "La gastronomie française est réputée mondialement", english: "French gastronomy is world-renowned", type: "fr-en" },
+                { french: "Could you recommend some must-see attractions", english: "Pourriez-vous recommander des attractions incontournables", type: "en-fr" },
+                { french: "Je suis impressionné par l'architecture gothique", english: "I'm impressed by Gothic architecture", type: "fr-en" },
+                { french: "The local market offers authentic products", english: "Le marché local offre des produits authentiques", type: "en-fr" },
+                { french: "Cette exposition présente l'art contemporain", english: "This exhibition presents contemporary art", type: "fr-en" },
+                { french: "I enjoy discovering hidden gems in cities", english: "J'aime découvrir des perles cachées dans les villes", type: "en-fr" },
+                { french: "Les festivals locaux révèlent la culture populaire", english: "Local festivals reveal popular culture", type: "fr-en" },
+                { french: "Travel broadens one's perspective on life", english: "Voyager élargit la perspective sur la vie", type: "en-fr" },
+                { french: "Je collectionne des souvenirs de chaque voyage", english: "I collect souvenirs from each trip", type: "fr-en" },
+                { french: "The landscape changes dramatically across regions", english: "Le paysage change radicalement entre les régions", type: "en-fr" },
+                { french: "Cette région est célèbre pour ses vins", english: "This region is famous for its wines", type: "fr-en" },
+                { french: "I prefer traveling by train to see the countryside", english: "Je préfère voyager en train pour voir la campagne", type: "en-fr" },
+                { french: "Les guides locaux partagent des histoires passionnantes", english: "Local guides share fascinating stories", type: "fr-en" },
+                { french: "Cultural exchange enriches mutual understanding", english: "L'échange culturel enrichit la compréhension mutuelle", type: "en-fr" },
+                { french: "Je photographie les monuments historiques", english: "I photograph historical monuments", type: "fr-en" },
+                { french: "Each region has its own unique dialect", english: "Chaque région a son propre dialecte unique", type: "en-fr" },
+                { french: "La musique traditionnelle reflète l'âme du peuple", english: "Traditional music reflects the soul of the people", type: "fr-en" },
+                { french: "I always try to learn basic phrases", english: "J'essaie toujours d'apprendre des phrases de base", type: "en-fr" },
+                { french: "Ces châteaux témoignent de l'histoire médiévale", english: "These castles testify to medieval history", type: "fr-en" },
+                { french: "Local cuisine tells the story of the land", english: "La cuisine locale raconte l'histoire de la terre", type: "en-fr" },
+                { french: "Je préfère l'hébergement chez l'habitant", english: "I prefer staying with local families", type: "fr-en" },
+                { french: "Museums preserve cultural heritage for future generations", english: "Les musées préservent le patrimoine culturel pour les générations futures", type: "en-fr" },
+                { french: "Cette cathédrale est un chef-d'œuvre architectural", english: "This cathedral is an architectural masterpiece", type: "fr-en" },
+                { french: "I enjoy attending local cultural performances", english: "J'aime assister aux spectacles culturels locaux", type: "en-fr" },
+                { french: "Les marchés aux puces révèlent des trésors cachés", english: "Flea markets reveal hidden treasures", type: "fr-en" },
+                { french: "Street art reflects contemporary social issues", english: "L'art de rue reflète les problèmes sociaux contemporains", type: "en-fr" },
+                { french: "Je documente mes voyages dans un journal", english: "I document my travels in a journal", type: "fr-en" },
+                { french: "The hospitality of locals makes travel memorable", english: "L'hospitalité des locaux rend les voyages mémorables", type: "en-fr" },
+                { french: "Cette ville mélange harmonieusement ancien et moderne", english: "This city harmoniously blends old and modern", type: "fr-en" },
+                { french: "I believe travel is the best education", english: "Je crois que voyager est la meilleure éducation", type: "en-fr" },
+                { french: "Les légendes locales ajoutent du mystère aux lieux", english: "Local legends add mystery to places", type: "fr-en" },
+                { french: "Public transportation reveals city rhythms", english: "Les transports publics révèlent les rythmes de la ville", type: "en-fr" },
+                { french: "Je recommande cette destination aux amateurs d'histoire", english: "I recommend this destination to history enthusiasts", type: "fr-en" },
+                { french: "The coastline offers spectacular natural beauty", english: "Le littoral offre une beauté naturelle spectaculaire", type: "en-fr" },
+                { french: "Cette expérience m'a donné une nouvelle perspective", english: "This experience gave me a new perspective", type: "fr-en" },
+                { french: "Language barriers often lead to funny situations", english: "Les barrières linguistiques mènent souvent à des situations amusantes", type: "en-fr" },
+                { french: "Je planifie déjà mon prochain voyage", english: "I'm already planning my next trip", type: "fr-en" },
+                { french: "Cultural immersion is more valuable than sightseeing", english: "L'immersion culturelle est plus précieuse que le tourisme", type: "en-fr" },
+                { french: "Cette aventure restera gravée dans ma mémoire", english: "This adventure will remain engraved in my memory", type: "fr-en" },
+                { french: "I appreciate the diversity of human cultures", english: "J'apprécie la diversité des cultures humaines", type: "en-fr" },
+                { french: "Les rencontres inattendues sont souvent les plus enrichissantes", english: "Unexpected encounters are often the most enriching", type: "fr-en" },
+                { french: "Travel teaches us about ourselves and others", english: "Voyager nous apprend sur nous-mêmes et les autres", type: "en-fr" },
+                { french: "Je garde contact avec les amis rencontrés en voyage", english: "I keep in touch with friends met while traveling", type: "fr-en" },
+                { french: "Every journey begins with a single step", english: "Chaque voyage commence par un seul pas", type: "en-fr" },
+                { french: "Cette découverte a changé ma vision du monde", english: "This discovery changed my worldview", type: "fr-en" },
+                { french: "I believe travel promotes global understanding", english: "Je crois que voyager favorise la compréhension mondiale", type: "en-fr" }
+            ]
         };
         
         function setDifficulty(difficulty) {
             currentDifficulty = difficulty;
             document.querySelectorAll('.difficulty-btn').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
-            usedExercises.clear();
+            updateRemainingCount();
             nextQuestion();
         }
         
@@ -1437,96 +1477,96 @@
             currentDirection = direction;
             document.querySelectorAll('.direction-btn').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
-            usedExercises.clear();
+            updateRemainingCount();
             nextQuestion();
+        }
+        
+        function getAvailableExercises() {
+            const exerciseSet = exercises[currentDifficulty];
+            const usedInDifficulty = usedQuestions[currentDifficulty];
+            
+            // Filter out used questions
+            let availableExercises = exerciseSet.filter((exercise, index) => 
+                !usedInDifficulty.includes(index)
+            );
+            
+            // Further filter by direction if not mixed
+            if (currentDirection !== 'mixed') {
+                availableExercises = availableExercises.filter(exercise => 
+                    exercise.type === currentDirection
+                );
+            }
+            
+            return availableExercises;
         }
         
         function getRandomExercise() {
             const exerciseSet = exercises[currentDifficulty];
-            
-            let filteredExercises = exerciseSet;
-            if (currentDirection !== 'mixed') {
-                filteredExercises = exerciseSet.filter(exercise => exercise.type === currentDirection);
-            }
-            
-            const availableExercises = filteredExercises.filter(exercise => {
-                const exerciseKey = `${exercise.french}-${exercise.english}-${exercise.type}`;
-                return !usedExercises.has(exerciseKey);
-            });
+            const availableExercises = getAvailableExercises();
             
             if (availableExercises.length === 0) {
-                showCompletionMessage();
-                return null;
+                return null; // No more questions available
             }
             
             const randomExercise = availableExercises[Math.floor(Math.random() * availableExercises.length)];
             
-            const exerciseKey = `${randomExercise.french}-${randomExercise.english}-${randomExercise.type}`;
-            usedExercises.add(exerciseKey);
+            // Find the index of this exercise in the original set and mark it as used
+            const originalIndex = exerciseSet.findIndex(exercise => 
+                exercise.french === randomExercise.french && 
+                exercise.english === randomExercise.english &&
+                exercise.type === randomExercise.type
+            );
+            
+            if (originalIndex !== -1) {
+                usedQuestions[currentDifficulty].push(originalIndex);
+            }
             
             return randomExercise;
         }
         
-        function updateProgress() {
+        function updateRemainingCount() {
+            const availableExercises = getAvailableExercises();
+            const remaining = availableExercises.length;
+            document.getElementById('remaining-count').textContent = remaining;
+            
+            const total = getFilteredTotalCount();
+            const completed = total - remaining;
+            const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+            
+            const progressBar = document.getElementById('progress-bar');
+            progressBar.style.width = percentage + '%';
+            progressBar.textContent = percentage + '%';
+        }
+        
+        function getFilteredTotalCount() {
             const exerciseSet = exercises[currentDifficulty];
-            let filteredExercises = exerciseSet;
-            if (currentDirection !== 'mixed') {
-                filteredExercises = exerciseSet.filter(exercise => exercise.type === currentDirection);
-            }
-            
-            const totalExercises = filteredExercises.length;
-            const remainingExercises = totalExercises - usedExercises.size;
-            
-            document.getElementById('remaining-count').textContent = remainingExercises;
-            document.getElementById('progress-info').textContent = 
-                `Progress: ${usedExercises.size}/${totalExercises} exercises completed`;
-        }
-        
-        function showCompletionMessage() {
-            document.getElementById('completion-message').style.display = 'block';
-            document.querySelector('.exercise-card').style.display = 'none';
-        }
-        
-        function hideCompletionMessage() {
-            document.getElementById('completion-message').style.display = 'none';
-            document.querySelector('.exercise-card').style.display = 'block';
-        }
-        
-        function resetUsedExercises() {
-            usedExercises.clear();
-            hideCompletionMessage();
-            nextQuestion();
-        }
-        
-        function suggestNextLevel() {
-            if (currentDifficulty === 'easy') {
-                setDifficulty('medium');
-                document.querySelector('[onclick="setDifficulty(\'medium\')"]').classList.add('active');
-                document.querySelector('[onclick="setDifficulty(\'easy\')"]').classList.remove('active');
-            } else if (currentDifficulty === 'medium') {
-                setDifficulty('hard');
-                document.querySelector('[onclick="setDifficulty(\'hard\')"]').classList.add('active');
-                document.querySelector('[onclick="setDifficulty(\'medium\')"]').classList.remove('active');
+            if (currentDirection === 'mixed') {
+                return exerciseSet.length;
             } else {
-                alert('Congratulations! You\'ve completed all difficulty levels! 🎉');
-                return;
+                return exerciseSet.filter(exercise => exercise.type === currentDirection).length;
             }
-            hideCompletionMessage();
         }
         
         function nextQuestion() {
+            // Stop any current audio
             if (currentAudio) {
                 currentAudio.pause();
                 currentAudio = null;
                 resetSpeakerButton();
             }
             
-            const exercise = getRandomExercise();
-            if (!exercise) {
+            currentQuestion = getRandomExercise();
+            
+            if (!currentQuestion) {
+                // No more questions available
+                document.getElementById('exercise-card').style.display = 'none';
+                document.getElementById('no-more-questions').style.display = 'block';
                 return;
             }
             
-            currentQuestion = exercise;
+            document.getElementById('exercise-card').style.display = 'block';
+            document.getElementById('no-more-questions').style.display = 'none';
+            
             document.getElementById('question').textContent = currentQuestion.french;
             document.getElementById('direction').textContent = 
                 currentQuestion.type === 'fr-en' ? 'Translate to English:' : 'Translate to French:';
@@ -1535,7 +1575,14 @@
             document.getElementById('celebration').style.display = 'none';
             document.getElementById('answer-input').focus();
             
-            updateProgress();
+            updateRemainingCount();
+        }
+        
+        function resetQuestions() {
+            // Reset used questions for current difficulty
+            usedQuestions[currentDifficulty] = [];
+            updateRemainingCount();
+            nextQuestion();
         }
         
         function checkAnswer() {
@@ -1546,7 +1593,10 @@
             totalCount++;
             document.getElementById('total-count').textContent = totalCount;
             
-            if (userAnswer === correctAnswer) {
+            // More flexible answer checking
+            const isCorrect = checkAnswerFlexibility(userAnswer, correctAnswer);
+            
+            if (isCorrect) {
                 correctCount++;
                 streakCount++;
                 feedback.className = 'feedback correct';
@@ -1563,6 +1613,48 @@
             
             feedback.style.display = 'block';
             updateStats();
+        }
+        
+        function checkAnswerFlexibility(userAnswer, correctAnswer) {
+            // Remove common punctuation and extra spaces
+            const normalizeText = (text) => {
+                return text.toLowerCase()
+                    .replace(/[.!?,:;'"]/g, '')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+            };
+            
+            const normalizedUser = normalizeText(userAnswer);
+            const normalizedCorrect = normalizeText(correctAnswer);
+            
+            // Exact match
+            if (normalizedUser === normalizedCorrect) return true;
+            
+            // Check for common variations
+            const commonVariations = {
+                'an': 'a',
+                'a': 'an',
+                'the': '',
+                '': 'the'
+            };
+            
+            // Split into words and check with variations
+            const userWords = normalizedUser.split(' ');
+            const correctWords = normalizedCorrect.split(' ');
+            
+            if (userWords.length === correctWords.length) {
+                let matches = 0;
+                for (let i = 0; i < userWords.length; i++) {
+                    if (userWords[i] === correctWords[i] || 
+                        commonVariations[userWords[i]] === correctWords[i] ||
+                        userWords[i] === commonVariations[correctWords[i]]) {
+                        matches++;
+                    }
+                }
+                if (matches >= correctWords.length * 0.8) return true; // 80% match
+            }
+            
+            return false;
         }
         
         function showAnswer() {
@@ -1582,7 +1674,7 @@
         
         function showCelebration() {
             const celebration = document.getElementById('celebration');
-            const emojis = ['🎉', '🌟', '🎊', '🏆', '👏', '🎈', '✨', '🌈'];
+            const emojis = ['🎉', '🌟', '🎊', '🏆', '👏', '🎈', '✨', '🌈', '🎯', '💫'];
             celebration.textContent = emojis[Math.floor(Math.random() * emojis.length)];
             celebration.style.display = 'block';
             
@@ -1598,6 +1690,7 @@
         }
         
         // Initialize with first question
+        updateRemainingCount();
         nextQuestion();
     </script>
 </body>
