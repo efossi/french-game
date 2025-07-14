@@ -331,7 +331,7 @@
     <div class="container">
         <h1>🇫🇷 French Translation Fun! 🇫🇷</h1>
         <p class="subtitle">Practice your French vocabulary with fun exercises!<br>
-        <small>🔊 Click speaker buttons for authentic French pronunciation</small></p>
+        <small>🔊 Click speaker buttons for pronunciation • Wait a moment for voices to load</small></p>
         
         <div class="stats">
             <div class="stat">
@@ -408,7 +408,6 @@
         let streakCount = 0;
         let currentDifficulty = 'easy';
         let currentDirection = 'mixed';
-        let currentAudio = null;
         let isSpeaking = false;
         
         // Track used questions to prevent repetition
@@ -419,15 +418,11 @@
         };
         
         function speakText(source) {
-            // Stop any current audio
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio = null;
+            // Stop any current speech
+            if (isSpeaking) {
+                speechSynthesis.cancel();
                 resetSpeakerButton();
-                if (isSpeaking) {
-                    isSpeaking = false;
-                    return;
-                }
+                return;
             }
             
             let textToSpeak = '';
@@ -450,71 +445,103 @@
             
             if (!textToSpeak) return;
             
-            // Use Google Translate's text-to-speech service
-            const encodedText = encodeURIComponent(textToSpeak);
-            const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=${language}&client=tw-ob`;
-            
-            // Create audio element
-            currentAudio = new Audio(audioUrl);
-            
-            // Visual feedback
-            const speakerBtn = document.getElementById('speak-question');
-            if (speakerBtn) {
-                speakerBtn.classList.add('playing');
-            }
-            isSpeaking = true;
-            
-            currentAudio.onended = function() {
-                resetSpeakerButton();
-            };
-            
-            currentAudio.onerror = function() {
-                resetSpeakerButton();
-                // Fallback to browser speech synthesis
-                fallbackToSpeechSynthesis(textToSpeak, language);
-            };
-            
-            // Play the audio
-            currentAudio.play().catch(function(error) {
-                console.log('Audio playback failed:', error);
-                resetSpeakerButton();
-                // Fallback to browser speech synthesis
-                fallbackToSpeechSynthesis(textToSpeak, language);
-            });
+            // Use browser's speech synthesis directly
+            useSpeechSynthesis(textToSpeak, language);
         }
         
-        function fallbackToSpeechSynthesis(text, lang) {
+        function useSpeechSynthesis(text, lang) {
             if (!window.speechSynthesis) {
                 alert('Sorry, audio pronunciation is not available in your browser!');
                 return;
             }
             
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = lang === 'fr' ? 'fr-FR' : 'en-US';
-            utterance.rate = 0.8;
-            utterance.pitch = 1.0;
+            // Cancel any ongoing speech
+            speechSynthesis.cancel();
             
-            // Try to find appropriate voice
-            const voices = speechSynthesis.getVoices();
-            const preferredVoice = voices.find(voice => 
-                voice.lang.startsWith(lang) && 
-                (voice.name.includes('Female') || voice.name.includes('Male'))
-            );
-            
-            if (preferredVoice) {
-                utterance.voice = preferredVoice;
-            }
-            
-            utterance.onend = function() {
-                resetSpeakerButton();
-            };
-            
-            utterance.onerror = function() {
-                resetSpeakerButton();
-            };
-            
-            speechSynthesis.speak(utterance);
+            // Wait a bit for the cancel to complete
+            setTimeout(() => {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = lang === 'fr' ? 'fr-FR' : 'en-US';
+                utterance.rate = 0.7; // Slightly slower for learning
+                utterance.pitch = 1.0;
+                utterance.volume = 1.0;
+                
+                // Visual feedback
+                const speakerBtn = document.getElementById('speak-question');
+                if (speakerBtn) {
+                    speakerBtn.classList.add('playing');
+                }
+                isSpeaking = true;
+                
+                // Try to find appropriate voice
+                const voices = speechSynthesis.getVoices();
+                let preferredVoice = null;
+                
+                // Look for French voices first
+                if (lang === 'fr') {
+                    preferredVoice = voices.find(voice => 
+                        voice.lang.toLowerCase().includes('fr') && 
+                        (voice.name.toLowerCase().includes('french') || voice.lang.startsWith('fr'))
+                    );
+                } else {
+                    preferredVoice = voices.find(voice => 
+                        voice.lang.toLowerCase().includes('en') && 
+                        voice.lang.startsWith('en')
+                    );
+                }
+                
+                if (preferredVoice) {
+                    utterance.voice = preferredVoice;
+                    console.log('Using voice:', preferredVoice.name, preferredVoice.lang);
+                }
+                
+                utterance.onstart = function() {
+                    isSpeaking = true;
+                };
+                
+                utterance.onend = function() {
+                    resetSpeakerButton();
+                };
+                
+                utterance.onerror = function(event) {
+                    console.log('Speech synthesis error:', event.error);
+                    resetSpeakerButton();
+                    
+                    // Show user-friendly message
+                    if (event.error === 'not-allowed') {
+                        alert('Please allow audio permissions and try again!');
+                    } else {
+                        alert('Sorry, audio pronunciation failed. Please try again!');
+                    }
+                };
+                
+                // Start speaking
+                try {
+                    speechSynthesis.speak(utterance);
+                } catch (error) {
+                    console.log('Speech synthesis failed:', error);
+                    resetSpeakerButton();
+                    alert('Sorry, audio pronunciation is not available!');
+                }
+            }, 50);
         }
+        
+        // Load voices when available
+        function loadVoices() {
+            const voices = speechSynthesis.getVoices();
+            console.log('Available voices:', voices.length);
+            voices.forEach(voice => {
+                if (voice.lang.includes('fr') || voice.lang.includes('en')) {
+                    console.log('Voice:', voice.name, voice.lang);
+                }
+            });
+        }
+        
+        // Initialize voices
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = loadVoices;
+        }
+        loadVoices();
         
         function resetSpeakerButton() {
             const speakerBtn = document.getElementById('speak-question');
@@ -522,7 +549,6 @@
                 speakerBtn.classList.remove('playing');
             }
             isSpeaking = false;
-            currentAudio = null;
         }
         
         // Massive exercise database with 1000+ entries
@@ -1548,10 +1574,9 @@
         }
         
         function nextQuestion() {
-            // Stop any current audio
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio = null;
+            // Stop any current speech
+            if (isSpeaking) {
+                speechSynthesis.cancel();
                 resetSpeakerButton();
             }
             
