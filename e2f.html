@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English-French Sentence Practice</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .header {
+            text-align: center;
+            background: rgba(255,255,255,0.95);
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            margin: 0 0 10px 0;
+            font-size: 2.5em;
+        }
+        
+        .header p {
+            color: #7f8c8d;
+            font-size: 1.1em;
+            margin: 0;
+        }
+        
+        .controls {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 0 10px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+        }
+        
+        .category {
+            background: rgba(255,255,255,0.95);
+            margin-bottom: 25px;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        
+        .category-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 25px;
+            font-size: 1.3em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .category-header:hover {
+            background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+        }
+        
+        .category-content {
+            padding: 20px;
+            display: none;
+        }
+        
+        .category-content.active {
+            display: block;
+        }
+        
+        .sentence-pair {
+            margin-bottom: 15px;
+            padding: 15px;
+            background: #f8f9ff;
+            border-radius: 10px;
+            border-left: 4px solid #3498db;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .sentence-pair:hover {
+            background: #e8f4f8;
+            transform: translateX(5px);
+        }
+        
+        .english {
+            font-size: 1.1em;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .french {
+            font-size: 1.05em;
+            color: #e74c3c;
+            font-style: italic;
+            display: none;
+            padding-top: 8px;
+            border-top: 1px solid #ecf0f1;
+        }
+        
+        .french.visible {
+            display: block;
+        }
+        
+        .toggle-indicator {
+            float: right;
+            font-size: 0.9em;
+            color: #7f8c8d;
+            font-weight: normal;
+        }
+        
+        .stats {
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        
+        .stats span {
+            display: inline-block;
+            margin: 0 20px;
+            font-size: 1.1em;
+            color: #2c3e50;
+        }
+        
+        .search-box {
+            width: 100%;
+            max-width: 400px;
+            padding: 12px 20px;
+            border: 2px solid #3498db;
+            border-radius: 25px;
+            font-size: 16px;
+            margin: 10px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        
+        .search-box:focus {
+            border-color: #2980b9;
+            box-shadow: 0 0 15px rgba(52, 152, 219, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🇬🇧 ➔ 🇫🇷 Language Practice</h1>
+        <p>Click any sentence to reveal its French translation • Practice your comprehension skills</p>
+    </div>
+    
+    <div class="controls">
+        <input type="text" class="search-box" placeholder="Search sentences..." onkeyup="searchSentences(this.value)">
+        <br><br>
+        <button class="btn" onclick="showAllTranslations()">Show All French</button>
+        <button class="btn" onclick="hideAllTranslations()">Hide All French</button>
+        <button class="btn" onclick="toggleAllCategories()">Expand/Collapse All</button>
+    </div>
+    
+    <div class="stats">
+        <span>📚 Total Sentences: <strong id="totalCount">0</strong></span>
+        <span>👁️ Translations Visible: <strong id="visibleCount">0</strong></span>
+        <span>📖 Categories: <strong id="categoryCount">0</strong></span>
+    </div>
+    
+    <div id="sentenceContainer">
+        <!-- Sentences will be populated by JavaScript -->
+    </div>
+
+    <script>
+        const sentences = {
+            "Greetings & Basic Phrases": [
+                ["Hello", "Bonjour"],
+                ["Good morning", "Bonjour"],
+                ["Good evening", "Bonsoir"],
+                ["Good night", "Bonne nuit"],
+                ["Goodbye", "Au revoir"],
+                ["See you later", "À bientôt"],
+                ["How are you?", "Comment allez-vous ?"],
+                ["I am fine", "Je vais bien"],
+                ["Please", "S'il vous plaît"],
+                ["Thank you", "Merci"],
+                ["You're welcome", "De rien"],
+                ["Excuse me", "Excusez-moi"],
+                ["I'm sorry", "Je suis désolé"],
+                ["Yes", "Oui"],
+                ["No", "Non"],
+                ["Maybe", "Peut-être"],
+                ["Of course", "Bien sûr"],
+                ["I don't know", "Je ne sais pas"],
+                ["I understand", "Je comprends"],
+                ["I don't understand", "Je ne comprends pas"]
+            ],
+            "Personal Information": [
+                ["My name is John", "Je m'appelle John"],
+                ["I am 25 years old", "J'ai 25 ans"],
+                ["I live in Paris", "J'habite à Paris"],
+                ["I am American", "Je suis américain"],
+                ["I am a student", "Je suis étudiant"],
+                ["I work in an office", "Je travaille dans un bureau"],
+                ["I speak English", "Je parle anglais"],
+                ["I am learning French", "J'apprends le français"],
+                ["I have a car", "J'ai une voiture"],
+                ["I have two children", "J'ai deux enfants"],
+                ["I am married", "Je suis marié"],
+                ["I am single", "Je suis célibataire"],
+                ["I like music", "J'aime la musique"],
+                ["I don't like coffee", "Je n'aime pas le café"],
+                ["I was born in 1995", "Je suis né en 1995"],
+                ["I have a brother", "J'ai un frère"],
+                ["I have a sister", "J'ai une sœur"],
+                ["My birthday is in June", "Mon anniversaire est en juin"],
+                ["I am tall", "Je suis grand"],
+                ["I have brown hair", "J'ai les cheveux bruns"]
+            ],
+            "Family & Relationships": [
+                ["This is my family", "Voici ma famille"],
+                ["My mother is kind", "Ma mère est gentille"],
+                ["My father works hard", "Mon père travaille dur"],
+                ["My grandmother is old", "Ma grand-mère est âgée"],
+                ["My grandfather is wise", "Mon grand-père est sage"],
+                ["I love my parents", "J'aime mes parents"],
+                ["My cousin lives nearby", "Mon cousin habite près d'ici"],
+                ["My aunt is a doctor", "Ma tante est médecin"],
+                ["My uncle is funny", "Mon oncle est drôle"],
+                ["I have many friends", "J'ai beaucoup d'amis"],
+                ["My best friend is loyal", "Mon meilleur ami est fidèle"],
+                ["My wife is beautiful", "Ma femme est belle"],
+                ["My husband is smart", "Mon mari est intelligent"],
+                ["My daughter is young", "Ma fille est jeune"],
+                ["My son plays soccer", "Mon fils joue au football"],
+                ["My baby is sleeping", "Mon bébé dort"],
+                ["We are happy together", "Nous sommes heureux ensemble"],
+                ["My family is large", "Ma famille est nombreuse"],
+                ["I miss my family", "Ma famille me manque"],
+                ["Family is important", "La famille est importante"]
+            ],
+            "Daily Activities": [
+                ["I wake up early", "Je me réveille tôt"],
+                ["I brush my teeth", "Je me brosse les dents"],
+                ["I take a shower", "Je prends une douche"],
+                ["I eat breakfast", "Je prends le petit-déjeuner"],
+                ["I go to work", "Je vais au travail"],
+                ["I drive my car", "Je conduis ma voiture"],
+                ["I take the bus", "Je prends le bus"],
+                ["I work all day", "Je travaille toute la journée"],
+                ["I eat lunch", "Je déjeune"],
+                ["I go home", "Je rentre à la maison"],
+                ["I cook dinner", "Je prépare le dîner"],
+                ["I watch TV", "Je regarde la télévision"],
+                ["I read a book", "Je lis un livre"],
+                ["I listen to music", "J'écoute de la musique"],
+                ["I do homework", "Je fais mes devoirs"],
+                ["I clean the house", "Je nettoie la maison"],
+                ["I go to bed", "Je vais au lit"],
+                ["I sleep well", "Je dors bien"],
+                ["I exercise regularly", "Je fais de l'exercice régulièrement"],
+                ["I study French", "J'étudie le français"]
+            ],
+            "Food & Drink": [
+                ["I am hungry", "J'ai faim"],
+                ["I am thirsty", "J'ai soif"],
+                ["I like pizza", "J'aime la pizza"],
+                ["I eat bread", "Je mange du pain"],
+                ["I drink water", "Je bois de l'eau"],
+                ["Coffee is hot", "Le café est chaud"],
+                ["The soup is delicious", "La soupe est délicieuse"],
+                ["I want some fruit", "Je veux des fruits"],
+                ["The apple is red", "La pomme est rouge"],
+                ["I buy vegetables", "J'achète des légumes"],
+                ["Cheese is yellow", "Le fromage est jaune"],
+                ["I cook pasta", "Je cuisine des pâtes"],
+                ["The meat is expensive", "La viande est chère"],
+                ["I love chocolate", "J'adore le chocolat"],
+                ["Wine is French", "Le vin est français"],
+                ["The fish is fresh", "Le poisson est frais"],
+                ["I bake a cake", "Je fais un gâteau"],
+                ["Salt is white", "Le sel est blanc"],
+                ["I need sugar", "J'ai besoin de sucre"],
+                ["The restaurant is good", "Le restaurant est bon"]
+            ],
+            "Weather & Time": [
+                ["It is sunny today", "Il fait beau aujourd'hui"],
+                ["It is raining", "Il pleut"],
+                ["It is cold outside", "Il fait froid dehors"],
+                ["The weather is nice", "Il fait beau"],
+                ["It is very hot", "Il fait très chaud"],
+                ["It is windy", "Il y a du vent"],
+                ["Snow is falling", "Il neige"],
+                ["The sky is blue", "Le ciel est bleu"],
+                ["What time is it?", "Quelle heure est-il ?"],
+                ["It is 3 o'clock", "Il est 3 heures"],
+                ["It is morning", "C'est le matin"],
+                ["It is afternoon", "C'est l'après-midi"],
+                ["It is evening", "C'est le soir"],
+                ["It is night", "C'est la nuit"],
+                ["Today is Monday", "Aujourd'hui c'est lundi"],
+                ["Tomorrow is Tuesday", "Demain c'est mardi"],
+                ["Yesterday was Sunday", "Hier c'était dimanche"],
+                ["The week is long", "La semaine est longue"],
+                ["The month is January", "Le mois est janvier"],
+                ["The year is 2024", "L'année est 2024"]
+            ],
+            "Colors & Numbers": [
+                ["The car is red", "La voiture est rouge"],
+                ["The grass is green", "L'herbe est verte"],
+                ["The sky is blue", "Le ciel est bleu"],
+                ["The sun is yellow", "Le soleil est jaune"],
+                ["The clouds are white", "Les nuages sont blancs"],
+                ["The night is black", "La nuit est noire"],
+                ["The flower is pink", "La fleur est rose"],
+                ["The tree is brown", "L'arbre est marron"],
+                ["I have one cat", "J'ai un chat"],
+                ["There are two dogs", "Il y a deux chiens"],
+                ["I see three birds", "Je vois trois oiseaux"],
+                ["We have four chairs", "Nous avons quatre chaises"],
+                ["There are five books", "Il y a cinq livres"],
+                ["I count six apples", "Je compte six pommes"],
+                ["Seven days in a week", "Sept jours dans une semaine"],
+                ["Eight hours of sleep", "Huit heures de sommeil"],
+                ["Nine months of school", "Neuf mois d'école"],
+                ["Ten fingers on hands", "Dix doigts sur les mains"],
+                ["I am twenty years old", "J'ai vingt ans"],
+                ["One hundred is a lot", "Cent c'est beaucoup"]
+            ],
+            "Shopping & Money": [
+                ["I go shopping", "Je fais du shopping"],
+                ["The store is open", "Le magasin est ouvert"],
+                ["How much does it cost?", "Combien ça coûte ?"],
+                ["It is very expensive", "C'est très cher"],
+                ["It is cheap", "C'est bon marché"],
+                ["I need to buy milk", "Je dois acheter du lait"],
+                ["Do you accept credit cards?", "Acceptez-vous les cartes de crédit ?"],
+                ["I pay with cash", "Je paie en espèces"],
+                ["Where is the cashier?", "Où est la caissière ?"],
+                ["I want a receipt", "Je veux un reçu"],
+                ["The price is fair", "Le prix est correct"],
+                ["I am looking for shoes", "Je cherche des chaussures"],
+                ["The dress is beautiful", "La robe est belle"],
+                ["I try on clothes", "J'essaie des vêtements"],
+                ["The size is too small", "La taille est trop petite"],
+                ["I return the item", "Je retourne l'article"],
+                ["The sale is tomorrow", "La vente est demain"],
+                ["I save money", "J'économise de l'argent"],
+                ["The bank is closed", "La banque est fermée"],
+                ["I need change", "J'ai besoin de monnaie"]
+            ],
+            "Transportation & Travel": [
+                ["I travel by plane", "Je voyage en avion"],
+                ["The train is fast", "Le train est rapide"],
+                ["I drive a car", "Je conduis une voiture"],
+                ["The bus is late", "Le bus est en retard"],
+                ["I ride my bicycle", "Je fais du vélo"],
+                ["Where is the airport?", "Où est l'aéroport ?"],
+                ["The taxi is yellow", "Le taxi est jaune"],
+                ["I walk to school", "Je vais à l'école à pied"],
+                ["The road is long", "La route est longue"],
+                ["Traffic is heavy", "Il y a beaucoup de circulation"],
+                ["I need directions", "J'ai besoin d'indications"],
+                ["Turn left here", "Tournez à gauche ici"],
+                ["Go straight ahead", "Allez tout droit"],
+                ["The hotel is nice", "L'hôtel est bien"],
+                ["I book a room", "Je réserve une chambre"],
+                ["My luggage is heavy", "Mes bagages sont lourds"],
+                ["The trip was fun", "Le voyage était amusant"],
+                ["I visit museums", "Je visite des musées"],
+                ["The city is beautiful", "La ville est belle"],
+                ["I take photos", "Je prends des photos"]
+            ],
+            "Health & Body": [
+                ["I feel sick", "Je me sens malade"],
+                ["My head hurts", "J'ai mal à la tête"],
+                ["I have a cold", "J'ai un rhume"],
+                ["I need medicine", "J'ai besoin de médicaments"],
+                ["The doctor is kind", "Le médecin est gentil"],
+                ["I exercise daily", "Je fais de l'exercice tous les jours"],
+                ["I am healthy", "Je suis en bonne santé"],
+                ["My eyes are blue", "Mes yeux sont bleus"],
+                ["I wash my hands", "Je me lave les mains"],
+                ["My tooth is broken", "Ma dent est cassée"],
+                ["I visit the dentist", "Je visite le dentiste"],
+                ["I have strong arms", "J'ai des bras forts"],
+                ["My legs are tired", "Mes jambes sont fatiguées"],
+                ["I hear music", "J'entends de la musique"],
+                ["I smell flowers", "Je sens les fleurs"],
+                ["My heart beats fast", "Mon cœur bat vite"],
+                ["I breathe deeply", "Je respire profondément"],
+                ["I feel happy", "Je me sens heureux"],
+                ["Sleep is important", "Le sommeil est important"],
+                ["I drink water daily", "Je bois de l'eau tous les jours"]
+            ],
+            "Education & Work": [
+                ["I go to school", "Je vais à l'école"],
+                ["The teacher is nice", "Le professeur est gentil"],
+                ["I study mathematics", "J'étudie les mathématiques"],
+                ["The exam is difficult", "L'examen est difficile"],
+                ["I do my homework", "Je fais mes devoirs"],
+                ["The book is thick", "Le livre est épais"],
+                ["I write with a pen", "J'écris avec un stylo"],
+                ["The computer is new", "L'ordinateur est nouveau"],
+                ["I work in an office", "Je travaille dans un bureau"],
+                ["My job is interesting", "Mon travail est intéressant"],
+                ["The meeting is at 2 PM", "La réunion est à 14h"],
+                ["I send emails", "J'envoie des emails"],
+                ["The project is finished", "Le projet est terminé"],
+                ["I earn good money", "Je gagne bien ma vie"],
+                ["My boss is strict", "Mon patron est strict"],
+                ["I work overtime", "Je fais des heures supplémentaires"],
+                ["The office is busy", "Le bureau est occupé"],
+                ["I have a break", "J'ai une pause"],
+                ["The deadline is tomorrow", "La date limite est demain"],
+                ["I love my career", "J'aime ma carrière"]
+            ],
+            "Emotions & Feelings": [
+                ["I am happy", "Je suis heureux"],
+                ["I feel sad", "Je me sens triste"],
+                ["I am angry", "Je suis en colère"],
+                ["I feel excited", "Je me sens excité"],
+                ["I am nervous", "Je suis nerveux"],
+                ["I feel calm", "Je me sens calme"],
+                ["I am surprised", "Je suis surpris"],
+                ["I feel proud", "Je me sens fier"],
+                ["I am worried", "Je suis inquiet"],
+                ["I feel confident", "Je me sens confiant"],
+                ["I am confused", "Je suis confus"],
+                ["I feel grateful", "Je me sens reconnaissant"],
+                ["I am disappointed", "Je suis déçu"],
+                ["I feel lonely", "Je me sens seul"],
+                ["I am embarrassed", "Je suis embarrassé"],
+                ["I feel jealous", "Je me sens jaloux"],
+                ["I am curious", "Je suis curieux"],
+                ["I feel tired", "Je me sens fatigué"],
+                ["I am energetic", "Je suis énergique"],
+                ["I feel peaceful", "Je me sens paisible"]
+            ]
+        };
+
+        let categoriesExpanded = {};
+        let translationsVisible = new Set();
+
+        function initializePage() {
+            const container = document.getElementById('sentenceContainer');
+            let totalSentences = 0;
+            let categoryCount = 0;
+
+            for (const [category, sentencePairs] of Object.entries(sentences)) {
+                categoryCount++;
+                totalSentences += sentencePairs.length;
+                categoriesExpanded[category] = false;
+
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = 'category';
+                categoryDiv.innerHTML = `
+                    <div class="category-header" onclick="toggleCategory('${category}')">
+                        ${category} (${sentencePairs.length} sentences)
+                        <span class="toggle-indicator" id="indicator-${category}">▼</span>
+                    </div>
+                    <div class="category-content" id="content-${category}">
+                        ${sentencePairs.map((pair, index) => {
+                            const sentenceId = `${category}-${index}`;
+                            return `
+                                <div class="sentence-pair" onclick="toggleTranslation('${sentenceId}')">
+                                    <div class="english">${pair[0]}</div>
+                                    <div class="french" id="french-${sentenceId}">${pair[1]}</div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+                container.appendChild(categoryDiv);
+            }
+
+            document.getElementById('totalCount').textContent = totalSentences;
+            document.getElementById('categoryCount').textContent = categoryCount;
+            updateVisibleCount();
+        }
+
+        function toggleCategory(category) {
+            const content = document.getElementById(`content-${category}`);
+            const indicator = document.getElementById(`indicator-${category}`);
+            
+            categoriesExpanded[category] = !categoriesExpanded[category];
+            
+            if (categoriesExpanded[category]) {
+                content.classList.add('active');
+                indicator.textContent = '▲';
+            } else {
+                content.classList.remove('active');
+                indicator.textContent = '▼';
+            }
+        }
+
+        function toggleAllCategories() {
+            const allExpanded = Object.values(categoriesExpanded).every(expanded => expanded);
+            
+            for (const category of Object.keys(sentences)) {
+                if (allExpanded) {
+                    categoriesExpanded[category] = false;
+                    document.getElementById(`content-${category}`).classList.remove('active');
+                    document.getElementById(`indicator-${category}`).textContent = '▼';
+                } else {
+                    categoriesExpanded[category] = true;
+                    document.getElementById(`content-${category}`).classList.add('active');
+                    document.getElementById(`indicator-${category}`).textContent = '▲';
+                }
+            }
+        }
+
+        function toggleTranslation(sentenceId) {
+            const frenchElement = document.getElementById(`french-${sentenceId}`);
+            
+            if (translationsVisible.has(sentenceId)) {
+                frenchElement.classList.remove('visible');
+                translationsVisible.delete(sentenceId);
+            } else {
+                frenchElement.classList.add('visible');
+                translationsVisible.add(sentenceId);
+            }
+            
+            updateVisibleCount();
+        }
+
+        function showAllTranslations() {
+            for (const [category, sentencePairs] of Object.entries(sentences)) {
+                for (let i = 0; i < sentencePairs.length; i++) {
+                    const sentenceId = `${category}-${i}`;
+                    const frenchElement = document.getElementById(`french-${sentenceId}`);
+                    if (frenchElement) {
+                        frenchElement.classList.add('visible');
+                        translationsVisible.add(sentenceId);
+                    }
+                }
+            }
+            updateVisibleCount();
+        }
+
+        function hideAllTranslations() {
+            for (const [category, sentencePairs] of Object.entries(sentences)) {
+                for (let i = 0; i < sentencePairs.length; i++) {
+                    const sentenceId = `${category}-${i}`;
+                    const frenchElement = document.getElementById(`french-${sentenceId}`);
+                    if (frenchElement) {
+                        frenchElement.classList.remove('visible');
+                        translationsVisible.delete(sentenceId);
+                    }
+                }
+            }
+            updateVisibleCount();
+        }
+
+        function updateVisibleCount() {
+            document.getElementById('visibleCount').textContent = translationsVisible.size;
+        }
+
+        function searchSentences(query) {
+            const searchTerm = query.toLowerCase().trim();
+            
+            for (const [category, sentencePairs] of Object.entries(sentences)) {
+                const categoryContent = document.getElementById(`content-${category}`);
+                const sentencePairElements = categoryContent.querySelectorAll('.sentence-pair');
+                let hasVisibleSentences = false;
+                
+                sentencePairElements.forEach((element, index) => {
+                    const englishText = sentencePairs[index][0].toLowerCase();
+                    const frenchText = sentencePairs[index][1].toLowerCase();
+                    
+                    if (searchTerm === '' || englishText.includes(searchTerm) || frenchText.includes(searchTerm)) {
+                        element.style.display = 'block';
+                        hasVisibleSentences = true;
+                    } else {
+                        element.style.display = 'none';
+                    }
+                });
+                
+                // Show category if it has matching sentences and search is active
+                if (searchTerm !== '' && hasVisibleSentences && !categoriesExpanded[category]) {
+                    toggleCategory(category);
+                }
+                
+                // Hide category if no matching sentences
+                const categoryDiv = categoryContent.parentElement;
+                if (searchTerm !== '' && !hasVisibleSentences) {
+                    categoryDiv.style.display = 'none';
+                } else {
+                    categoryDiv.style.display = 'block';
+                }
+            }
+        }
+
+        // Initialize the page when it loads
+        window.onload = initializePage;
+    </script>
+</body>
+</html>
