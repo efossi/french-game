@@ -106,14 +106,14 @@
             transform: translateX(5px);
         }
         
-        .english {
+        .primary-text {
             font-size: 1.1em;
             color: #2c3e50;
             margin-bottom: 8px;
             font-weight: 500;
         }
         
-        .french {
+        .secondary-text {
             font-size: 1.05em;
             color: #e74c3c;
             font-style: italic;
@@ -122,7 +122,7 @@
             border-top: 1px solid #ecf0f1;
         }
         
-        .french.visible {
+        .secondary-text.visible {
             display: block;
         }
         
@@ -165,19 +165,88 @@
             border-color: #2980b9;
             box-shadow: 0 0 15px rgba(52, 152, 219, 0.3);
         }
+        
+        .mode-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+            gap: 15px;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #3498db;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background-color: #e74c3c;
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        
+        .mode-label {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2c3e50;
+            min-width: 150px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>🇬🇧 ➔ 🇫🇷 Language Practice</h1>
-        <p>Click any sentence to reveal its French translation • Practice your comprehension skills</p>
+        <h1 id="headerTitle">🇬🇧 ➔ 🇫🇷 Language Practice</h1>
+        <p id="headerDesc">Click any sentence to reveal its French translation • Practice your comprehension skills</p>
     </div>
     
     <div class="controls">
+        <div class="mode-toggle">
+            <label class="toggle-switch">
+                <input type="checkbox" id="modeToggle" onchange="toggleLearningMode()">
+                <span class="slider"></span>
+            </label>
+            <span class="mode-label" id="modeLabel">English → French</span>
+        </div>
+        <br>
         <input type="text" class="search-box" placeholder="Search sentences..." onkeyup="searchSentences(this.value)">
         <br><br>
-        <button class="btn" onclick="showAllTranslations()">Show All French</button>
-        <button class="btn" onclick="hideAllTranslations()">Hide All French</button>
+        <button class="btn" onclick="showAllTranslations()" id="showAllBtn">Show All French</button>
+        <button class="btn" onclick="hideAllTranslations()" id="hideAllBtn">Hide All French</button>
         <button class="btn" onclick="toggleAllCategories()">Expand/Collapse All</button>
     </div>
     
@@ -461,6 +530,7 @@
 
         let categoriesExpanded = {};
         let translationsVisible = new Set();
+        let isEnglishToFrench = true; // true = EN→FR, false = FR→EN
 
         function initializePage() {
             const container = document.getElementById('sentenceContainer');
@@ -484,8 +554,8 @@
                             const sentenceId = `${category}-${index}`;
                             return `
                                 <div class="sentence-pair" onclick="toggleTranslation('${sentenceId}')">
-                                    <div class="english">${pair[0]}</div>
-                                    <div class="french" id="french-${sentenceId}">${pair[1]}</div>
+                                    <div class="primary-text" id="primary-${sentenceId}">${pair[0]}</div>
+                                    <div class="secondary-text" id="secondary-${sentenceId}">${pair[1]}</div>
                                 </div>
                             `;
                         }).join('')}
@@ -497,6 +567,53 @@
             document.getElementById('totalCount').textContent = totalSentences;
             document.getElementById('categoryCount').textContent = categoryCount;
             updateVisibleCount();
+        }
+
+        function toggleLearningMode() {
+            isEnglishToFrench = !isEnglishToFrench;
+            
+            // Update UI labels
+            const headerTitle = document.getElementById('headerTitle');
+            const headerDesc = document.getElementById('headerDesc');
+            const modeLabel = document.getElementById('modeLabel');
+            const showAllBtn = document.getElementById('showAllBtn');
+            const hideAllBtn = document.getElementById('hideAllBtn');
+            
+            if (isEnglishToFrench) {
+                headerTitle.textContent = '🇬🇧 ➔ 🇫🇷 Language Practice';
+                headerDesc.textContent = 'Click any sentence to reveal its French translation • Practice your comprehension skills';
+                modeLabel.textContent = 'English → French';
+                showAllBtn.textContent = 'Show All French';
+                hideAllBtn.textContent = 'Hide All French';
+            } else {
+                headerTitle.textContent = '🇫🇷 ➔ 🇬🇧 Language Practice';
+                headerDesc.textContent = 'Cliquez sur une phrase pour révéler sa traduction anglaise • Pratiquez vos compétences';
+                modeLabel.textContent = 'French → English';
+                showAllBtn.textContent = 'Show All English';
+                hideAllBtn.textContent = 'Hide All English';
+            }
+            
+            // Update all sentence pairs
+            for (const [category, sentencePairs] of Object.entries(sentences)) {
+                for (let i = 0; i < sentencePairs.length; i++) {
+                    const sentenceId = `${category}-${i}`;
+                    const primaryElement = document.getElementById(`primary-${sentenceId}`);
+                    const secondaryElement = document.getElementById(`secondary-${sentenceId}`);
+                    
+                    if (primaryElement && secondaryElement) {
+                        if (isEnglishToFrench) {
+                            primaryElement.textContent = sentencePairs[i][0]; // English
+                            secondaryElement.textContent = sentencePairs[i][1]; // French
+                        } else {
+                            primaryElement.textContent = sentencePairs[i][1]; // French
+                            secondaryElement.textContent = sentencePairs[i][0]; // English
+                        }
+                    }
+                }
+            }
+            
+            // Hide all translations when switching modes
+            hideAllTranslations();
         }
 
         function toggleCategory(category) {
@@ -531,13 +648,13 @@
         }
 
         function toggleTranslation(sentenceId) {
-            const frenchElement = document.getElementById(`french-${sentenceId}`);
+            const secondaryElement = document.getElementById(`secondary-${sentenceId}`);
             
             if (translationsVisible.has(sentenceId)) {
-                frenchElement.classList.remove('visible');
+                secondaryElement.classList.remove('visible');
                 translationsVisible.delete(sentenceId);
             } else {
-                frenchElement.classList.add('visible');
+                secondaryElement.classList.add('visible');
                 translationsVisible.add(sentenceId);
             }
             
@@ -548,9 +665,9 @@
             for (const [category, sentencePairs] of Object.entries(sentences)) {
                 for (let i = 0; i < sentencePairs.length; i++) {
                     const sentenceId = `${category}-${i}`;
-                    const frenchElement = document.getElementById(`french-${sentenceId}`);
-                    if (frenchElement) {
-                        frenchElement.classList.add('visible');
+                    const secondaryElement = document.getElementById(`secondary-${sentenceId}`);
+                    if (secondaryElement) {
+                        secondaryElement.classList.add('visible');
                         translationsVisible.add(sentenceId);
                     }
                 }
@@ -562,9 +679,9 @@
             for (const [category, sentencePairs] of Object.entries(sentences)) {
                 for (let i = 0; i < sentencePairs.length; i++) {
                     const sentenceId = `${category}-${i}`;
-                    const frenchElement = document.getElementById(`french-${sentenceId}`);
-                    if (frenchElement) {
-                        frenchElement.classList.remove('visible');
+                    const secondaryElement = document.getElementById(`secondary-${sentenceId}`);
+                    if (secondaryElement) {
+                        secondaryElement.classList.remove('visible');
                         translationsVisible.delete(sentenceId);
                     }
                 }
@@ -588,6 +705,7 @@
                     const englishText = sentencePairs[index][0].toLowerCase();
                     const frenchText = sentencePairs[index][1].toLowerCase();
                     
+                    // Search in both languages regardless of current mode
                     if (searchTerm === '' || englishText.includes(searchTerm) || frenchText.includes(searchTerm)) {
                         element.style.display = 'block';
                         hasVisibleSentences = true;
