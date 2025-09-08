@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elisabeth's Birthday Party Invitation</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One:wght@400&family=Open+Sans:wght@400;600;700&display=swap');
+        
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Open Sans', sans-serif;
+            background: linear-gradient(135deg, #E8D5FF 0%, #D1B3FF 50%, #C299FF 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .invitation {
+            width: 5.5in;
+            height: 8.5in;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-sizing: border-box;
+            box-shadow: 0 10px 30px rgba(138, 43, 226, 0.3);
+            border: 4px solid #8A2BE2;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .invitation::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(186, 85, 211, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(138, 43, 226, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(221, 160, 221, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .content {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        
+        .header {
+            margin-bottom: 20px;
+        }
+        
+        .title {
+            font-family: 'Fredoka One', cursive;
+            font-size: 28px;
+            color: #6A0DAD;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(138, 43, 226, 0.3);
+            letter-spacing: 1px;
+        }
+        
+        .birthday-girl {
+            font-family: 'Fredoka One', cursive;
+            font-size: 32px;
+            color: #8A2BE2;
+            margin: 10px 0;
+            text-shadow: 2px 2px 4px rgba(138, 43, 226, 0.3);
+        }
+        
+        .fun-icons {
+            font-size: 24px;
+            margin: 15px 0;
+            letter-spacing: 8px;
+        }
+        
+        .details {
+            background: linear-gradient(135deg, #F3E8FF 0%, #E8D5FF 100%);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 2px solid #BA55D3;
+        }
+        
+        .detail-item {
+            margin: 12px 0;
+            font-size: 16px;
+            color: #4B0082;
+            font-weight: 600;
+        }
+        
+        .detail-label {
+            font-weight: 700;
+            color: #6A0DAD;
+            text-transform: uppercase;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+        }
+        
+        .detail-value {
+            font-size: 18px;
+            margin-top: 5px;
+            color: #8A2BE2;
+        }
+        
+        .venue {
+            font-family: 'Fredoka One', cursive;
+            font-size: 20px;
+            color: #9932CC;
+            margin: 15px 0;
+        }
+        
+        .activities {
+            background: linear-gradient(90deg, #DDA0DD 0%, #BA55D3 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-weight: 600;
+        }
+        
+        .rsvp {
+            background: #8A2BE2;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: 600;
+            margin-top: 20px;
+        }
+        
+        .decorative-stars {
+            font-size: 20px;
+            color: #DA70D6;
+            margin: 10px 0;
+        }
+        
+        .jump-text {
+            font-family: 'Fredoka One', cursive;
+            font-size: 18px;
+            color: #9370DB;
+            margin: 10px 0;
+            transform: rotate(-2deg);
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+                margin: 0;
+            }
+            
+            .invitation {
+                box-shadow: none;
+                margin: 0;
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="invitation">
+        <div class="content">
+            <div class="header">
+                <h1 class="title">🎉 You're Invited! 🎉</h1>
+                <div class="fun-icons">🎈✨🎂✨🎈</div>
+                <h2 class="birthday-girl">Elisabeth's</h2>
+                <h2 class="birthday-girl">Birthday Bash!</h2>
+            </div>
+            
+            <div class="details">
+                <div class="detail-item">
+                    <div class="detail-label">📅 When</div>
+                    <div class="detail-value">Saturday, September 20th, 2025</div>
+                    <div class="detail-value">1:15 PM - 3:45 PM</div>
+                </div>
+                
+                <div class="detail-item">
+                    <div class="detail-label">📍 Where</div>
+                    <div class="venue">Launch Entertainment Park</div>
+                    <div class="detail-value">366 Cambridge Road, Woburn, MA</div>
+                </div>
+            </div>
+            
+            <div class="activities">
+                <div style="font-family: 'Fredoka One', cursive; font-size: 18px; margin-bottom: 10px;">
+                    🤸‍♀️ Get Ready For Epic Fun! 🤸‍♂️
+                </div>
+                <div>Trampolines • Laser Tag • Arcade Games</div>
+                <div>Dodgeball • Pizza Party • And More!</div>
+            </div>
+            
+            <div class="jump-text">Let's Jump Into Fun!</div>
+            
+            <div class="decorative-stars">⭐ 💜 ⭐ 💜 ⭐ 💜 ⭐</div>
+            
+            <div class="rsvp">
+                <div style="font-weight: 700; margin-bottom: 8px;">Please RSVP!</div>
+                <div style="font-size: 14px;">Contact Elisabeth's parents to confirm</div>
+                <div style="font-size: 14px;">your spot for this amazing party!</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
